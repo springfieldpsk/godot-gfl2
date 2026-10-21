@@ -224,6 +224,11 @@ ShaderTypes::ShaderTypes() {
 	shader_modes[RSE::SHADER_SPATIAL].functions["light"].built_ins["LIGHT_AREA_DIFFUSE_MULTIPLIER"] = constt(ShaderLanguage::TYPE_VEC3);
 	shader_modes[RSE::SHADER_SPATIAL].functions["light"].built_ins["LIGHT_AREA_SPECULAR_MULTIPLIER"] = constt(ShaderLanguage::TYPE_VEC3);
 	shader_modes[RSE::SHADER_SPATIAL].functions["light"].built_ins["ATTENUATION"] = constt(ShaderLanguage::TYPE_FLOAT);
+	// GFL2 P1 probe built-ins (patched engine only; upstream keeps none of these).
+	shader_modes[RSE::SHADER_SPATIAL].functions["light"].built_ins["LIGHT_KIND"] = constt(ShaderLanguage::TYPE_INT);
+	shader_modes[RSE::SHADER_SPATIAL].functions["light"].built_ins["LIGHT_ID"] = constt(ShaderLanguage::TYPE_INT);
+	shader_modes[RSE::SHADER_SPATIAL].functions["light"].built_ins["LIGHT_ATTENUATION_NOSHADOW"] = constt(ShaderLanguage::TYPE_FLOAT);
+	shader_modes[RSE::SHADER_SPATIAL].functions["light"].built_ins["LIGHT_SHADOW"] = constt(ShaderLanguage::TYPE_FLOAT);
 	shader_modes[RSE::SHADER_SPATIAL].functions["light"].built_ins["ALBEDO"] = constt(ShaderLanguage::TYPE_VEC3);
 	shader_modes[RSE::SHADER_SPATIAL].functions["light"].built_ins["BACKLIGHT"] = constt(ShaderLanguage::TYPE_VEC3);
 	shader_modes[RSE::SHADER_SPATIAL].functions["light"].built_ins["METALLIC"] = constt(ShaderLanguage::TYPE_FLOAT);

@@ -744,6 +744,11 @@ void SceneShaderForwardMobile::init(const String p_defines) {
 		actions.renames["LIGHT_AREA_SPECULAR_MULTIPLIER"] = "area_specular";
 		actions.renames["LIGHT"] = "light_highp";
 		actions.renames["ATTENUATION"] = "attenuation_highp";
+		// GFL2 P1 probe renames.
+		actions.renames["LIGHT_KIND"] = "light_kind_highp";
+		actions.renames["LIGHT_ID"] = "light_id_highp";
+		actions.renames["LIGHT_ATTENUATION_NOSHADOW"] = "attenuation_no_shadow_highp";
+		actions.renames["LIGHT_SHADOW"] = "light_shadow_highp";
 		actions.renames["DIFFUSE_LIGHT"] = "diffuse_light_highp";
 		actions.renames["SPECULAR_LIGHT"] = "specular_light_highp";
 
