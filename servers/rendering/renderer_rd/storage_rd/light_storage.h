@@ -64,6 +64,7 @@ private:
 		Color color = Color(1, 1, 1, 1);
 		RID projector;
 		bool shadow = false;
+		bool gfl2_main = false; // GFL2 P1: designated character main light
 		bool negative = false;
 		bool reverse_cull = false;
 		RSE::LightBakeMode bake_mode = RSE::LIGHT_BAKE_DYNAMIC;
@@ -210,7 +211,7 @@ private:
 		float fade_from;
 		float fade_to;
 		uint32_t sscs_index;
-		uint32_t pad;
+		uint32_t gfl2_owner_main; // GFL2 P1: bit31 main flag, bits 0-30 persistent light RID id (was: pad)
 		uint32_t bake_mode;
 		float volumetric_fog_energy;
 		float shadow_bias[4];
@@ -505,6 +506,7 @@ public:
 	virtual void light_free(RID p_rid) override;
 
 	virtual void light_set_color(RID p_light, const Color &p_color) override;
+	virtual void light_set_gfl2_main(RID p_light, bool p_main) override; // GFL2 P1
 	virtual void light_set_param(RID p_light, RSE::LightParam p_param, float p_value) override;
 	virtual void light_set_shadow(RID p_light, bool p_enabled) override;
 	virtual void light_set_projector(RID p_light, RID p_texture) override;

@@ -749,6 +749,8 @@ void SceneShaderForwardMobile::init(const String p_defines) {
 		actions.renames["LIGHT_ID"] = "light_id_highp";
 		actions.renames["LIGHT_ATTENUATION_NOSHADOW"] = "attenuation_no_shadow_highp";
 		actions.renames["LIGHT_SHADOW"] = "light_shadow_highp";
+		actions.renames["LIGHT_IS_MAIN"] = "light_is_main_highp";
+		actions.renames["LIGHT_OWNER"] = "light_owner_highp";
 		actions.renames["DIFFUSE_LIGHT"] = "diffuse_light_highp";
 		actions.renames["SPECULAR_LIGHT"] = "specular_light_highp";
 

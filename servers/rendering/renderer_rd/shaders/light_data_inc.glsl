@@ -73,7 +73,7 @@ struct DirectionalLightData {
 	float fade_from;
 	float fade_to;
 	uint sscs_index;
-	uint pad;
+	uint gfl2_owner_main; // GFL2 P1: bit31 = designated character main light; bits 0-30 = persistent light RID id (was: pad)
 	uint bake_mode;
 	float volumetric_fog_energy;
 	vec4 shadow_bias;

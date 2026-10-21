@@ -54,6 +54,7 @@ public:
 	virtual void light_free(RID p_rid) = 0;
 
 	virtual void light_set_color(RID p_light, const Color &p_color) = 0;
+	virtual void light_set_gfl2_main(RID p_light, bool p_main) = 0; // GFL2 P1
 	virtual void light_set_param(RID p_light, RSE::LightParam p_param, float p_value) = 0;
 	virtual void light_set_shadow(RID p_light, bool p_enabled) = 0;
 	virtual void light_set_projector(RID p_light, RID p_texture) = 0;

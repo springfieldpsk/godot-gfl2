@@ -73,6 +73,7 @@ public:
 	virtual void light_free(RID p_rid) override {}
 
 	virtual void light_set_color(RID p_light, const Color &p_color) override {}
+	virtual void light_set_gfl2_main(RID p_light, bool p_main) override {} // GFL2 P1
 	virtual void light_set_param(RID p_light, RSE::LightParam p_param, float p_value) override {}
 	virtual void light_set_shadow(RID p_light, bool p_enabled) override {}
 	virtual void light_set_projector(RID p_light, RID p_texture) override {}

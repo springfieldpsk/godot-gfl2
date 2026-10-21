@@ -98,7 +98,7 @@ hvec3 f0_Clear_Coat_To_Surface(hvec3 f0) {
 	return clamp(f0 * (f0 * (half(0.941892) - half(0.263008) * f0) + half(0.346479)) - half(0.0285998), half(0.0), half(1.0));
 }
 
-void light_compute(hvec3 N, hvec3 L, hvec3 V, half A, hvec3 light_color, bool is_directional, half attenuation, uint gfl2_light_kind_id, half gfl2_attenuation_no_shadow, half gfl2_light_shadow, hvec3 f0, half roughness, half metallic, half specular_amount, hvec3 albedo, inout half alpha, vec2 screen_uv, hvec3 energy_compensation,
+void light_compute(hvec3 N, hvec3 L, hvec3 V, half A, hvec3 light_color, bool is_directional, half attenuation, uint gfl2_light_kind_id, uint gfl2_owner_main, half gfl2_attenuation_no_shadow, half gfl2_light_shadow, hvec3 f0, half roughness, half metallic, half specular_amount, hvec3 albedo, inout half alpha, vec2 screen_uv, hvec3 energy_compensation,
 #ifdef LIGHT_BACKLIGHT_USED
 		hvec3 backlight,
 #endif
@@ -166,6 +166,11 @@ void light_compute(hvec3 N, hvec3 L, hvec3 V, half A, hvec3 light_color, bool is
 	float light_shadow_highp = float(gfl2_light_shadow);
 	int light_kind_highp = int(gfl2_light_kind_id >> 16);
 	int light_id_highp = int(gfl2_light_kind_id & 0xFFFFu);
+	// GFL2 P1 full: designated main-light flag (bit31) + persistent light RID
+	// id (bits 0-30). 0 = not designated (directional only in v1; omni/spot
+	// and lightmap-probe lights pass 0).
+	float light_is_main_highp = (gfl2_owner_main & 0x80000000u) != 0u ? 1.0 : 0.0;
+	int light_owner_highp = int(gfl2_owner_main & 0x7FFFFFFFu);
 	vec3 diffuse_light_highp = vec3(diffuse_light);
 	vec3 specular_light_highp = vec3(specular_light);
 	bool is_area = false;
@@ -735,7 +740,7 @@ void light_process_omni(uint idx, vec3 vertex, hvec3 eye_vec, hvec3 normal, vec3
 	}
 
 	vec3 light_rel_vec_norm = light_rel_vec / light_length;
-	light_compute(normal, hvec3(light_rel_vec_norm), eye_vec, size, hvec3(color), false, omni_attenuation * shadow, (1u << 16) | (uint(idx) & 0xFFFFu), omni_attenuation, shadow, f0, roughness, metallic, half(omni_lights.data[idx].specular_amount), albedo, alpha, screen_uv, energy_compensation,
+	light_compute(normal, hvec3(light_rel_vec_norm), eye_vec, size, hvec3(color), false, omni_attenuation * shadow, (1u << 16) | (uint(idx) & 0xFFFFu), 0u, omni_attenuation, shadow, f0, roughness, metallic, half(omni_lights.data[idx].specular_amount), albedo, alpha, screen_uv, energy_compensation,
 #ifdef LIGHT_BACKLIGHT_USED
 			backlight,
 #endif
@@ -937,7 +942,7 @@ void light_process_spot(uint idx, vec3 vertex, hvec3 eye_vec, hvec3 normal, vec3
 		}
 	}
 
-	light_compute(normal, hvec3(light_rel_vec_norm), eye_vec, size, hvec3(color), false, spot_attenuation * shadow, (2u << 16) | (uint(idx) & 0xFFFFu), spot_attenuation, shadow, f0, roughness, metallic, half(spot_lights.data[idx].specular_amount), albedo, alpha, screen_uv, energy_compensation,
+	light_compute(normal, hvec3(light_rel_vec_norm), eye_vec, size, hvec3(color), false, spot_attenuation * shadow, (2u << 16) | (uint(idx) & 0xFFFFu), 0u, spot_attenuation, shadow, f0, roughness, metallic, half(spot_lights.data[idx].specular_amount), albedo, alpha, screen_uv, energy_compensation,
 #ifdef LIGHT_BACKLIGHT_USED
 			backlight,
 #endif

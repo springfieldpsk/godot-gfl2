@@ -492,6 +492,7 @@ public:
 	FUNCRIDSPLIT(area_light)
 
 	FUNC2(light_set_color, RID, const Color &)
+	FUNC2(light_set_gfl2_main, RID, bool)
 	FUNC3(light_set_param, RID, RSE::LightParam, float)
 	FUNC2(light_set_shadow, RID, bool)
 	FUNC2(light_set_projector, RID, RID)

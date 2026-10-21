@@ -123,6 +123,17 @@ uint32_t Light3D::get_cull_mask() const {
 	return cull_mask;
 }
 
+void Light3D::set_gfl2_character_main(bool p_enable) {
+	// GFL2 P1: explicit character main-light designation consumed by the
+	// character shading contract (LIGHT_IS_MAIN in spatial light()).
+	gfl2_character_main = p_enable;
+	RS::get_singleton()->light_set_gfl2_main(light, p_enable);
+}
+
+bool Light3D::get_gfl2_character_main() const {
+	return gfl2_character_main;
+}
+
 void Light3D::set_color(const Color &p_color) {
 	color = p_color;
 
@@ -389,6 +400,8 @@ void Light3D::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_color", "color"), &Light3D::set_color);
 	ClassDB::bind_method(D_METHOD("get_color"), &Light3D::get_color);
+	ClassDB::bind_method(D_METHOD("set_gfl2_character_main", "enabled"), &Light3D::set_gfl2_character_main);
+	ClassDB::bind_method(D_METHOD("get_gfl2_character_main"), &Light3D::get_gfl2_character_main);
 
 	ClassDB::bind_method(D_METHOD("set_shadow_reverse_cull_face", "enable"), &Light3D::set_shadow_reverse_cull_face);
 	ClassDB::bind_method(D_METHOD("get_shadow_reverse_cull_face"), &Light3D::get_shadow_reverse_cull_face);
@@ -431,6 +444,7 @@ void Light3D::_bind_methods() {
 	ADD_PROPERTYI(PropertyInfo(Variant::FLOAT, "shadow_bias", PROPERTY_HINT_RANGE, "0,10,0.001"), "set_param", "get_param", PARAM_SHADOW_BIAS);
 	ADD_PROPERTYI(PropertyInfo(Variant::FLOAT, "shadow_normal_bias", PROPERTY_HINT_RANGE, "0,10,0.001"), "set_param", "get_param", PARAM_SHADOW_NORMAL_BIAS);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "shadow_reverse_cull_face"), "set_shadow_reverse_cull_face", "get_shadow_reverse_cull_face");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "gfl2_character_main"), "set_gfl2_character_main", "get_gfl2_character_main");
 	ADD_PROPERTYI(PropertyInfo(Variant::FLOAT, "shadow_transmittance_bias", PROPERTY_HINT_RANGE, "-16,16,0.001"), "set_param", "get_param", PARAM_TRANSMITTANCE_BIAS);
 	ADD_PROPERTYI(PropertyInfo(Variant::FLOAT, "shadow_opacity", PROPERTY_HINT_RANGE, "0,1,0.01"), "set_param", "get_param", PARAM_SHADOW_OPACITY);
 	ADD_PROPERTYI(PropertyInfo(Variant::FLOAT, "shadow_blur", PROPERTY_HINT_RANGE, "0,10,0.001"), "set_param", "get_param", PARAM_SHADOW_BLUR);

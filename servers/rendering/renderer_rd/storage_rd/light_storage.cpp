@@ -217,6 +217,14 @@ void LightStorage::light_set_color(RID p_light, const Color &p_color) {
 	light->color = p_color;
 }
 
+void LightStorage::light_set_gfl2_main(RID p_light, bool p_main) {
+	// GFL2 P1: explicit character main-light designation (no implicit
+	// list-order or brightest-direction fallback; no main = defined absent).
+	Light *light = light_owner.get_or_null(p_light);
+	ERR_FAIL_NULL(light);
+	light->gfl2_main = p_main;
+}
+
 void LightStorage::light_set_param(RID p_light, RSE::LightParam p_param, float p_value) {
 	Light *light = light_owner.get_or_null(p_light);
 	ERR_FAIL_NULL(light);
@@ -817,6 +825,9 @@ void LightStorage::update_light_buffers(RenderDataRD *p_render_data, const Paged
 				}
 
 				light_data.bake_mode = light->bake_mode;
+
+				// GFL2 P1: bit31 = designated main light, bits 0-30 = persistent light RID id
+				light_data.gfl2_owner_main = (light->gfl2_main ? (1u << 31) : 0u) | (uint32_t(light_instance->light.get_id()) & 0x7FFFFFFFu);
 
 				if (light_data.shadow_opacity > 0.001) {
 					RSE::LightDirectionalShadowMode smode = light->directional_shadow_mode;
