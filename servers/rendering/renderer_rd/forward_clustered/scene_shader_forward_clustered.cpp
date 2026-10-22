@@ -925,6 +925,7 @@ void SceneShaderForwardClustered::init(const String p_defines) {
 		actions.base_uniform_string = "material.";
 		actions.base_varying_index = 15;
 
+		actions.supports_gfl2_bilinear = true;
 		actions.default_filter = ShaderLanguage::FILTER_LINEAR_MIPMAP;
 		actions.default_repeat = ShaderLanguage::REPEAT_ENABLE;
 		actions.global_buffer_array_variable = "global_shader_uniforms.data";

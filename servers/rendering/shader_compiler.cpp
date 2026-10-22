@@ -284,6 +284,9 @@ String ShaderCompiler::_get_sampler_name(ShaderLanguage::TextureFilter p_filter,
 		ERR_FAIL_COND_V(actions.default_repeat == ShaderLanguage::REPEAT_DEFAULT, String());
 		p_repeat = actions.default_repeat;
 	}
+	if (p_filter == ShaderLanguage::FILTER_GFL2_BILINEAR) {
+		return p_repeat == ShaderLanguage::REPEAT_ENABLE ? "GFL2_SAMPLER_BILINEAR_REPEAT" : "GFL2_SAMPLER_BILINEAR_CLAMP";
+	}
 	constexpr const char *name_mapping[] = {
 		"SAMPLER_NEAREST_CLAMP",
 		"SAMPLER_LINEAR_CLAMP",
@@ -1678,6 +1681,9 @@ Error ShaderCompiler::compile(RSE::ShaderMode p_mode, const String &p_code, Iden
 	fragment_varyings.clear();
 
 	shader = parser.get_shader();
+	for (const KeyValue<StringName, SL::ShaderNode::Uniform> &E : shader->uniforms) {
+		ERR_FAIL_COND_V_MSG(E.value.filter == SL::FILTER_GFL2_BILINEAR && (!actions.supports_gfl2_bilinear || p_mode != RSE::SHADER_SPATIAL), ERR_UNAVAILABLE, "filter_gfl2_bilinear requires Forward+ spatial rendering.");
+	}
 	function = nullptr;
 	// Return value only relevant within nested calls.
 	_ALLOW_DISCARD_ _dump_node_code(shader, 1, r_gen_code, *p_actions, actions, false);

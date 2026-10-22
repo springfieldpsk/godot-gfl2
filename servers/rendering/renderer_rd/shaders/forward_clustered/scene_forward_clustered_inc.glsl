@@ -319,6 +319,9 @@ layout(set = 0, binding = 19) uniform texture2D ltc_lut2;
 
 layout(set = 0, binding = 20) uniform texture2D area_light_atlas;
 /* Set 1: Render Pass (changes per render pass) */
+// P1-SAMPLER-01: explicit source bilinear; existing sampler bindings unchanged.
+layout(set = 1, binding = 40) uniform sampler GFL2_SAMPLER_BILINEAR_CLAMP;
+layout(set = 1, binding = 41) uniform sampler GFL2_SAMPLER_BILINEAR_REPEAT;
 
 layout(set = 1, binding = 0, std140) uniform SceneDataBlock {
 	SceneData data;

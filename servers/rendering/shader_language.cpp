@@ -232,6 +232,7 @@ const char *ShaderLanguage::token_names[TK_MAX] = {
 	"FILTER_LINEAR_MIPMAP",
 	"FILTER_NEAREST_MIPMAP_ANISOTROPIC",
 	"FILTER_LINEAR_MIPMAP_ANISOTROPIC",
+	"FILTER_GFL2_BILINEAR",
 	"REPEAT_ENABLE",
 	"REPEAT_DISABLE",
 	"NO_STORAGE",
@@ -411,6 +412,7 @@ const ShaderLanguage::KeyWord ShaderLanguage::keyword_list[] = {
 	{ TK_FILTER_LINEAR_MIPMAP, "filter_linear_mipmap", CF_UNSPECIFIED, {}, {} },
 	{ TK_FILTER_NEAREST_MIPMAP_ANISOTROPIC, "filter_nearest_mipmap_anisotropic", CF_UNSPECIFIED, {}, {} },
 	{ TK_FILTER_LINEAR_MIPMAP_ANISOTROPIC, "filter_linear_mipmap_anisotropic", CF_UNSPECIFIED, {}, {} },
+	{ TK_FILTER_GFL2_BILINEAR, "filter_gfl2_bilinear", CF_UNSPECIFIED, {}, {} },
 	{ TK_REPEAT_ENABLE, "repeat_enable", CF_UNSPECIFIED, {}, {} },
 	{ TK_REPEAT_DISABLE, "repeat_disable", CF_UNSPECIFIED, {}, {} },
 
@@ -1283,6 +1285,9 @@ String ShaderLanguage::get_texture_filter_name(TextureFilter p_filter) {
 		} break;
 		case FILTER_NEAREST_MIPMAP: {
 			result = "filter_nearest_mipmap";
+		} break;
+		case FILTER_GFL2_BILINEAR: {
+			result = "filter_gfl2_bilinear";
 		} break;
 		case FILTER_LINEAR_MIPMAP: {
 			result = "filter_linear_mipmap";
@@ -9930,7 +9935,7 @@ Error ShaderLanguage::_parse_shader(const HashMap<StringName, FunctionInfo> &p_f
 							if (uniform.array_size > 0) {
 								static Vector<int> supported_hints = {
 									TK_HINT_SOURCE_COLOR, TK_HINT_COLOR_CONVERSION_DISABLED, TK_REPEAT_DISABLE, TK_REPEAT_ENABLE,
-									TK_FILTER_LINEAR, TK_FILTER_LINEAR_MIPMAP, TK_FILTER_LINEAR_MIPMAP_ANISOTROPIC,
+									TK_FILTER_LINEAR, TK_FILTER_LINEAR_MIPMAP, TK_FILTER_LINEAR_MIPMAP_ANISOTROPIC, TK_FILTER_GFL2_BILINEAR,
 									TK_FILTER_NEAREST, TK_FILTER_NEAREST_MIPMAP, TK_FILTER_NEAREST_MIPMAP_ANISOTROPIC,
 									TK_HINT_NO_STORAGE, TK_HINT_NO_EDITOR
 								};
@@ -10213,6 +10218,9 @@ Error ShaderLanguage::_parse_shader(const HashMap<StringName, FunctionInfo> &p_f
 								} break;
 								case TK_FILTER_NEAREST_MIPMAP: {
 									new_filter = FILTER_NEAREST_MIPMAP;
+								} break;
+								case TK_FILTER_GFL2_BILINEAR: {
+									new_filter = FILTER_GFL2_BILINEAR;
 								} break;
 								case TK_FILTER_LINEAR_MIPMAP: {
 									new_filter = FILTER_LINEAR_MIPMAP;
@@ -12217,6 +12225,7 @@ Error ShaderLanguage::complete(const String &p_code, const ShaderCompileInfo &p_
 				Vector<String> options;
 				if (current_uniform_filter == FILTER_DEFAULT) {
 					options.push_back("filter_linear");
+					options.push_back("filter_gfl2_bilinear");
 					options.push_back("filter_linear_mipmap");
 					options.push_back("filter_linear_mipmap_anisotropic");
 					options.push_back("filter_nearest");

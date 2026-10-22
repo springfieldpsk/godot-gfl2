@@ -2778,10 +2778,27 @@ MaterialStorage::Samplers MaterialStorage::samplers_rd_allocate(float p_mipmap_b
 		}
 	}
 
+	// P1-SAMPLER-01: independent of viewport/global filtering and LOD bias.
+	for (int i = 0; i < 2; i++) {
+		RD::SamplerState state;
+		state.min_filter = RD::SAMPLER_FILTER_LINEAR;
+		state.mag_filter = RD::SAMPLER_FILTER_LINEAR;
+		state.mip_filter = RD::SAMPLER_FILTER_NEAREST;
+		state.lod_bias = 0.0f;
+		state.use_anisotropy = false;
+		state.repeat_u = state.repeat_v = state.repeat_w = i ? RD::SAMPLER_REPEAT_MODE_REPEAT : RD::SAMPLER_REPEAT_MODE_CLAMP_TO_EDGE;
+		samplers.gfl2_bilinear[i] = RD::get_singleton()->sampler_create(state);
+	}
 	return samplers;
 }
 
 void MaterialStorage::samplers_rd_free(Samplers &p_samplers) const {
+	for (RID &sampler : p_samplers.gfl2_bilinear) {
+		if (sampler.is_valid()) {
+			RD::get_singleton()->free_rid(sampler);
+			sampler = RID();
+		}
+	}
 	for (int i = 1; i < RSE::CANVAS_ITEM_TEXTURE_FILTER_MAX; i++) {
 		for (int j = 1; j < RSE::CANVAS_ITEM_TEXTURE_REPEAT_MAX; j++) {
 			if (p_samplers.rids[i][j].is_valid()) {

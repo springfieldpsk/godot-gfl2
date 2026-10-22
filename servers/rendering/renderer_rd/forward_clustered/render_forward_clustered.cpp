@@ -3694,6 +3694,8 @@ RID RenderForwardClustered::_setup_render_pass_uniform_set(RenderListType p_rend
 	}
 
 	p_samplers.append_uniforms(uniforms, 12);
+	uniforms.push_back(RD::Uniform(RD::UNIFORM_TYPE_SAMPLER, 40, p_samplers.gfl2_bilinear[0]));
+	uniforms.push_back(RD::Uniform(RD::UNIFORM_TYPE_SAMPLER, 41, p_samplers.gfl2_bilinear[1]));
 
 	{
 		RD::Uniform u;
@@ -4058,6 +4060,8 @@ RID RenderForwardClustered::_setup_sdfgi_render_pass_uniform_set(RID p_albedo_te
 	}
 
 	p_samplers.append_uniforms(uniforms, 12);
+	uniforms.push_back(RD::Uniform(RD::UNIFORM_TYPE_SAMPLER, 40, p_samplers.gfl2_bilinear[0]));
+	uniforms.push_back(RD::Uniform(RD::UNIFORM_TYPE_SAMPLER, 41, p_samplers.gfl2_bilinear[1]));
 
 	// actual sdfgi stuff
 

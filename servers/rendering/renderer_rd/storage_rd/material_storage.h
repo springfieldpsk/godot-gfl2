@@ -123,6 +123,7 @@ public:
 	};
 
 	struct Samplers {
+		RID gfl2_bilinear[2]; // Clamp/repeat, fixed zero bias, nearest mip; P1-SAMPLER-01.
 		RID rids[RSE::CANVAS_ITEM_TEXTURE_FILTER_MAX][RSE::CANVAS_ITEM_TEXTURE_REPEAT_MAX];
 		float mipmap_bias = 0.0f;
 		bool use_nearest_mipmap_filter = false;
