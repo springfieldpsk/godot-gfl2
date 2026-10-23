@@ -259,6 +259,9 @@ ShaderTypes::ShaderTypes() {
 		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("gfl2_semantics") });
 		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("gfl2_motion_inputs") });
 		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("gfl2_color_disabled") });
+		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("gfl2_color_rgb_only") });
+		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("gfl2_color_r_only") });
+		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("gfl2_alpha_src_alpha") });
 		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("unshaded") });
 		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("wireframe") });
 		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("diffuse"), "lambert", "lambert_wrap", "burley", "toon" });

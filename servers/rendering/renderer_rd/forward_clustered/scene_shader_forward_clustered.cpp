@@ -65,6 +65,7 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 	uses_gfl2_outputs = false;
 	writes_gfl2_semantic = writes_gfl2_owner_state = writes_gfl2_motion = false;
 	gfl2_color_disabled = false;
+	gfl2_color_rgb_only = gfl2_color_r_only = gfl2_alpha_src_alpha = false;
 	uses_alpha_clip = false;
 	uses_alpha_antialiasing = false;
 	uses_blend_alpha = false;
@@ -132,6 +133,9 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 	actions.usage_flag_pointers["GFL2_CURRENT_CLIP"] = &uses_gfl2_clip_values;
 	actions.usage_flag_pointers["GFL2_PREVIOUS_CLIP"] = &uses_gfl2_clip_values;
 	actions.render_mode_flags["gfl2_color_disabled"] = &gfl2_color_disabled;
+	actions.render_mode_flags["gfl2_color_rgb_only"] = &gfl2_color_rgb_only;
+	actions.render_mode_flags["gfl2_color_r_only"] = &gfl2_color_r_only;
+	actions.render_mode_flags["gfl2_alpha_src_alpha"] = &gfl2_alpha_src_alpha;
 	actions.usage_flag_pointers["GFL2_SEMANTIC"] = &uses_gfl2_outputs;
 	actions.usage_flag_pointers["GFL2_OWNER_STATE"] = &uses_gfl2_outputs;
 	actions.usage_flag_pointers["GFL2_SOURCE_MOTION"] = &uses_gfl2_outputs;
@@ -199,6 +203,10 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 	}
 	if (err == OK && ((uses_gfl2_motion_inputs && !uses_gfl2_semantics) || (uses_gfl2_clip_values && !uses_gfl2_motion_inputs))) {
 		ERR_PRINT("gfl2_motion_inputs requires gfl2_semantics; clip inputs require the explicit motion mode.");
+		err = ERR_INVALID_DATA;
+	}
+	if (err == OK && (((gfl2_color_rgb_only || gfl2_color_r_only || gfl2_alpha_src_alpha) && !uses_gfl2_semantics) || (int(gfl2_color_disabled) + int(gfl2_color_rgb_only) + int(gfl2_color_r_only) > 1) || (gfl2_alpha_src_alpha && blend_mode != BLEND_MODE_MIX))) {
+		ERR_PRINT("GFL2 color modes require gfl2_semantics, mutually exclusive RT0 masks, and blend_mix for gfl2_alpha_src_alpha.");
 		err = ERR_INVALID_DATA;
 	}
 	if (err != OK) {
@@ -506,9 +514,16 @@ void SceneShaderForwardClustered::ShaderData::_create_pipeline(PipelineKey p_pip
 
 	if (p_pipeline_key.gfl2_attachments) {
 		blend_state.attachments.resize(6);
+		RD::PipelineColorBlendState::Attachment &color = blend_state.attachments.write[0];
 		if (gfl2_color_disabled) {
-			RD::PipelineColorBlendState::Attachment &color = blend_state.attachments.write[0];
 			color.write_r = color.write_g = color.write_b = color.write_a = false;
+		} else if (gfl2_color_rgb_only) {
+			color.write_a = false;
+		} else if (gfl2_color_r_only) {
+			color.write_g = color.write_b = color.write_a = false;
+		}
+		if (gfl2_alpha_src_alpha) {
+			color.src_alpha_blend_factor = RD::BLEND_FACTOR_SRC_ALPHA;
 		}
 		const bool writes[] = { writes_gfl2_semantic, writes_gfl2_owner_state, writes_gfl2_motion };
 		for (int i = 3; i < 6; i++) {

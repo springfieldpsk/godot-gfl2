@@ -252,6 +252,9 @@ public:
 		bool writes_gfl2_owner_state = false;
 		bool writes_gfl2_motion = false;
 		bool gfl2_color_disabled = false;
+		bool gfl2_color_rgb_only = false;
+		bool gfl2_color_r_only = false;
+		bool gfl2_alpha_src_alpha = false;
 		bool uses_blend_alpha = false;
 		bool uses_alpha_clip = false;
 		bool uses_alpha_antialiasing = false;
