@@ -900,6 +900,7 @@ static uint32_t _align_up(uint32_t size, uint32_t alignment) {
 Error RenderingDeviceDriverVulkan::_check_device_capabilities() {
 	// Fill device family and version.
 	device_capabilities.device_family = DEVICE_VULKAN;
+	device_capabilities.gfl2_native_logic_operations = requested_device_features.logicOp;
 	device_capabilities.version_major = VK_API_VERSION_MAJOR(physical_device_properties.apiVersion);
 	device_capabilities.version_minor = VK_API_VERSION_MINOR(physical_device_properties.apiVersion);
 

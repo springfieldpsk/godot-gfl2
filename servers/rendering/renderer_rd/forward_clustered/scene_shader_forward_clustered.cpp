@@ -66,6 +66,7 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 	writes_gfl2_semantic = writes_gfl2_owner_state = writes_gfl2_motion = writes_gfl2_contour_mask = false;
 	gfl2_color_disabled = false;
 	gfl2_color_rgb_only = gfl2_color_r_only = gfl2_alpha_src_alpha = false;
+	uses_gfl2_idmask = writes_gfl2_idmask = gfl2_idmask_r = gfl2_idmask_or = gfl2_idmask_g = false;
 	uses_alpha_clip = false;
 	uses_alpha_antialiasing = false;
 	uses_blend_alpha = false;
@@ -136,6 +137,10 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 	actions.render_mode_flags["gfl2_color_rgb_only"] = &gfl2_color_rgb_only;
 	actions.render_mode_flags["gfl2_color_r_only"] = &gfl2_color_r_only;
 	actions.render_mode_flags["gfl2_alpha_src_alpha"] = &gfl2_alpha_src_alpha;
+	actions.render_mode_flags["gfl2_idmask_r"] = &gfl2_idmask_r;
+	actions.render_mode_flags["gfl2_idmask_or"] = &gfl2_idmask_or;
+	actions.render_mode_flags["gfl2_idmask_g"] = &gfl2_idmask_g;
+	actions.usage_flag_pointers["GFL2_IDMASK_VALUE"] = &uses_gfl2_idmask;
 	actions.usage_flag_pointers["GFL2_SEMANTIC"] = &uses_gfl2_outputs;
 	actions.usage_flag_pointers["GFL2_OWNER_STATE"] = &uses_gfl2_outputs;
 	actions.usage_flag_pointers["GFL2_SOURCE_MOTION"] = &uses_gfl2_outputs;
@@ -171,6 +176,7 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 	actions.write_flag_pointers["GFL2_OWNER_STATE"] = &writes_gfl2_owner_state;
 	actions.write_flag_pointers["GFL2_SOURCE_MOTION"] = &writes_gfl2_motion;
 	actions.write_flag_pointers["GFL2_CONTOUR_MASK"] = &writes_gfl2_contour_mask;
+	actions.write_flag_pointers["GFL2_IDMASK_VALUE"] = &writes_gfl2_idmask;
 	actions.write_flag_pointers["VERTEX"] = &uses_vertex;
 	actions.write_flag_pointers["POSITION"] = &uses_position;
 	actions.write_flag_pointers["TANGENT"] = &writes_tangent;
@@ -210,6 +216,15 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 	if (err == OK && (((gfl2_color_rgb_only || gfl2_color_r_only || gfl2_alpha_src_alpha) && !uses_gfl2_semantics) || (int(gfl2_color_disabled) + int(gfl2_color_rgb_only) + int(gfl2_color_r_only) > 1) || (gfl2_alpha_src_alpha && blend_mode != BLEND_MODE_MIX))) {
 		ERR_PRINT("GFL2 color modes require gfl2_semantics, mutually exclusive RT0 masks, and blend_mix for gfl2_alpha_src_alpha.");
 		err = ERR_INVALID_DATA;
+	}
+	const int idmask_modes = int(gfl2_idmask_r) + int(gfl2_idmask_or) + int(gfl2_idmask_g);
+	if (err == OK && (uses_gfl2_idmask || idmask_modes) && (idmask_modes != 1 || !writes_gfl2_idmask || !uses_gfl2_semantics || !gfl2_color_disabled || writes_gfl2_semantic || writes_gfl2_owner_state || writes_gfl2_motion || writes_gfl2_contour_mask || uses_gfl2_motion_inputs || gfl2_alpha_src_alpha || blend_mode != BLEND_MODE_MIX || depth_test_invertedi || stencil_readi || stencil_writei || stencil_write_depth_faili || (gfl2_idmask_r ? (depth_drawi != DEPTH_DRAW_ALWAYS || depth_test_disabledi) : (depth_drawi != DEPTH_DRAW_DISABLED || !depth_test_disabledi)))) {
+		ERR_PRINT("GFL2 IDMask requires one explicit mode, assigned value, exclusive disabled-RT0 semantics, and matching depth state.");
+		err = ERR_INVALID_DATA;
+	}
+	if (err == OK && gfl2_idmask_or && !RD::get_singleton()->get_device_capabilities().gfl2_native_logic_operations) {
+		ERR_PRINT("GFL2 IDMask OR requires native device logic operations.");
+		err = ERR_UNAVAILABLE;
 	}
 	if (err != OK) {
 		if (version.is_valid()) {
@@ -515,7 +530,7 @@ void SceneShaderForwardClustered::ShaderData::_create_pipeline(PipelineKey p_pip
 	}
 
 	if (p_pipeline_key.gfl2_attachments) {
-		blend_state.attachments.resize(7);
+		blend_state.attachments.resize(8);
 		RD::PipelineColorBlendState::Attachment &color = blend_state.attachments.write[0];
 		if (gfl2_color_disabled) {
 			color.write_r = color.write_g = color.write_b = color.write_a = false;
@@ -532,6 +547,22 @@ void SceneShaderForwardClustered::ShaderData::_create_pipeline(PipelineKey p_pip
 			RD::PipelineColorBlendState::Attachment &attachment = blend_state.attachments.write[i];
 			attachment.enable_blend = false;
 			attachment.write_r = attachment.write_g = attachment.write_b = attachment.write_a = uses_gfl2_semantics && writes[i - 3];
+		}
+		RD::PipelineColorBlendState::Attachment &idmask = blend_state.attachments.write[7];
+		idmask.enable_blend = false;
+		idmask.write_r = writes_gfl2_idmask && (gfl2_idmask_r || gfl2_idmask_or);
+		idmask.write_g = writes_gfl2_idmask && (gfl2_idmask_g || gfl2_idmask_or);
+		idmask.write_b = idmask.write_a = false;
+		if (writes_gfl2_idmask) {
+			// Logic operations apply to the entire pipeline. No unrelated target
+			// may be written by this explicitly isolated IDMask draw.
+			for (int i = 0; i < 7; i++) {
+				RD::PipelineColorBlendState::Attachment &attachment = blend_state.attachments.write[i];
+				attachment.enable_blend = false;
+				attachment.write_r = attachment.write_g = attachment.write_b = attachment.write_a = false;
+			}
+			blend_state.enable_logic_op = gfl2_idmask_or;
+			blend_state.logic_op = RD::LOGIC_OP_OR;
 		}
 	}
 
@@ -814,6 +845,9 @@ void SceneShaderForwardClustered::init(const String p_defines) {
 		actions.renames["GFL2_OWNER_STATE"] = "gfl2_owner_state";
 		actions.renames["GFL2_SOURCE_MOTION"] = "gfl2_source_motion";
 		actions.renames["GFL2_CONTOUR_MASK"] = "gfl2_contour_mask";
+		actions.renames["GFL2_IDMASK_VALUE"] = "gfl2_idmask_value";
+		actions.render_mode_defines["gfl2_idmask_or"] = "#define GFL2_IDMASK_OR\n";
+		actions.render_mode_defines["gfl2_idmask_g"] = "#define GFL2_IDMASK_G\n";
 		actions.render_mode_defines["gfl2_semantics"] = "#define GFL2_SEMANTICS\n";
 		actions.renames["ALBEDO"] = "albedo_highp";
 		actions.renames["ALPHA"] = "alpha_highp";

@@ -940,6 +940,7 @@ public:
 
 	struct Capabilities {
 		DeviceFamily device_family = DEVICE_UNKNOWN;
+		bool gfl2_native_logic_operations = false;
 		uint32_t version_major = 1;
 		uint32_t version_minor = 0;
 	};

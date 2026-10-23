@@ -191,14 +191,15 @@ void RenderForwardClustered::RenderBufferDataForwardClustered::ensure_gfl2_attac
 		render_buffers->create_texture("gfl2", "owner_state", RD::DATA_FORMAT_R32G32_UINT, usage, render_buffers->get_texture_samples());
 		render_buffers->create_texture("gfl2", "source_motion", RD::DATA_FORMAT_R32G32B32A32_SFLOAT, usage, render_buffers->get_texture_samples());
 		render_buffers->create_texture("gfl2", "contour_mask", RD::DATA_FORMAT_R8_UNORM, usage | RD::TEXTURE_USAGE_CAN_COPY_FROM_BIT, render_buffers->get_texture_samples());
+		render_buffers->create_texture("gfl2", "idmask", RD::DATA_FORMAT_R8G8_UNORM, usage | RD::TEXTURE_USAGE_CAN_COPY_FROM_BIT, render_buffers->get_texture_samples());
 	}
 }
 
 void RenderForwardClustered::RenderBufferDataForwardClustered::clear_gfl2_attachments() {
 	// Clear only the auxiliary attachments. Main color/depth are loaded by the
 	// normal alpha framebuffer, preserving all opaque and transparent coverage.
-	RID fb = FramebufferCacheRD::get_singleton()->get_cache(render_buffers->get_texture("gfl2", "semantic"), render_buffers->get_texture("gfl2", "owner_state"), render_buffers->get_texture("gfl2", "source_motion"), render_buffers->get_texture("gfl2", "contour_mask"));
-	RD::get_singleton()->draw_list_begin(fb, RD::DRAW_CLEAR_COLOR_ALL, Vector<Color>({ Color(0, 0, 0, 0), Color(0, 0, 0, 0), Color(0, 0, 0, 0), Color(0, 0, 0, 0) }));
+	RID fb = FramebufferCacheRD::get_singleton()->get_cache(render_buffers->get_texture("gfl2", "semantic"), render_buffers->get_texture("gfl2", "owner_state"), render_buffers->get_texture("gfl2", "source_motion"), render_buffers->get_texture("gfl2", "contour_mask"), render_buffers->get_texture("gfl2", "idmask"));
+	RD::get_singleton()->draw_list_begin(fb, RD::DRAW_CLEAR_COLOR_ALL, Vector<Color>({ Color(0, 0, 0, 0), Color(0, 0, 0, 0), Color(0, 0, 0, 0), Color(0, 0, 0, 0), Color(0, 0, 0, 0) }));
 	RD::get_singleton()->draw_list_end();
 }
 
@@ -228,9 +229,9 @@ RID RenderForwardClustered::RenderBufferDataForwardClustered::get_color_pass_fb(
 		ensure_gfl2_attachments();
 		RID vrs_texture = render_buffers->has_texture(RB_SCOPE_VRS, RB_TEXTURE) ? render_buffers->get_texture(RB_SCOPE_VRS, RB_TEXTURE) : RID();
 		if (vrs_texture.is_valid()) {
-			return FramebufferCacheRD::get_singleton()->get_cache(color, specular, velocity_buffer, render_buffers->get_texture("gfl2", "semantic"), render_buffers->get_texture("gfl2", "owner_state"), render_buffers->get_texture("gfl2", "source_motion"), render_buffers->get_texture("gfl2", "contour_mask"), depth, vrs_texture);
+			return FramebufferCacheRD::get_singleton()->get_cache(color, specular, velocity_buffer, render_buffers->get_texture("gfl2", "semantic"), render_buffers->get_texture("gfl2", "owner_state"), render_buffers->get_texture("gfl2", "source_motion"), render_buffers->get_texture("gfl2", "contour_mask"), render_buffers->get_texture("gfl2", "idmask"), depth, vrs_texture);
 		}
-		return FramebufferCacheRD::get_singleton()->get_cache(color, specular, velocity_buffer, render_buffers->get_texture("gfl2", "semantic"), render_buffers->get_texture("gfl2", "owner_state"), render_buffers->get_texture("gfl2", "source_motion"), render_buffers->get_texture("gfl2", "contour_mask"), depth);
+		return FramebufferCacheRD::get_singleton()->get_cache(color, specular, velocity_buffer, render_buffers->get_texture("gfl2", "semantic"), render_buffers->get_texture("gfl2", "owner_state"), render_buffers->get_texture("gfl2", "source_motion"), render_buffers->get_texture("gfl2", "contour_mask"), render_buffers->get_texture("gfl2", "idmask"), depth);
 	}
 
 	if (render_buffers->has_texture(RB_SCOPE_VRS, RB_TEXTURE)) {

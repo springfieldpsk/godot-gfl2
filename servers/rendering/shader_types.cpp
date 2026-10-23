@@ -154,6 +154,7 @@ ShaderTypes::ShaderTypes() {
 	shader_modes[RSE::SHADER_SPATIAL].functions["fragment"].built_ins["GFL2_OWNER_STATE"] = ShaderLanguage::TYPE_UVEC2;
 	shader_modes[RSE::SHADER_SPATIAL].functions["fragment"].built_ins["GFL2_SOURCE_MOTION"] = ShaderLanguage::TYPE_VEC4;
 	shader_modes[RSE::SHADER_SPATIAL].functions["fragment"].built_ins["GFL2_CONTOUR_MASK"] = ShaderLanguage::TYPE_FLOAT;
+	shader_modes[RSE::SHADER_SPATIAL].functions["fragment"].built_ins["GFL2_IDMASK_VALUE"] = ShaderLanguage::TYPE_FLOAT;
 	shader_modes[RSE::SHADER_SPATIAL].functions["fragment"].built_ins["ALBEDO"] = ShaderLanguage::TYPE_VEC3;
 	shader_modes[RSE::SHADER_SPATIAL].functions["fragment"].built_ins["PREMUL_ALPHA_FACTOR"] = ShaderLanguage::TYPE_FLOAT;
 	shader_modes[RSE::SHADER_SPATIAL].functions["fragment"].built_ins["ALPHA"] = ShaderLanguage::TYPE_FLOAT;
@@ -263,6 +264,9 @@ ShaderTypes::ShaderTypes() {
 		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("gfl2_color_rgb_only") });
 		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("gfl2_color_r_only") });
 		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("gfl2_alpha_src_alpha") });
+		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("gfl2_idmask_r") });
+		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("gfl2_idmask_or") });
+		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("gfl2_idmask_g") });
 		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("unshaded") });
 		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("wireframe") });
 		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("diffuse"), "lambert", "lambert_wrap", "burley", "toon" });
