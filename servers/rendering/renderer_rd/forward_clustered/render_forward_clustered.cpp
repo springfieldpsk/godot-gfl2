@@ -495,6 +495,10 @@ void RenderForwardClustered::_render_list_template(RenderingDevice::DrawListID p
 				}
 
 				pipeline_key.gfl2_attachments = p_params->gfl2_attachments;
+				if (shader->uses_gfl2_motion_inputs && (!p_params->gfl2_motion_ready || (surf->owner->base_flags & INSTANCE_DATA_FLAG_MULTIMESH))) {
+					ERR_PRINT_ONCE("gfl2_motion_inputs requires a motion-requesting compositor, no TAA/upscaler, and ordinary MeshInstance3D geometry.");
+					continue;
+				}
 				if (shader->uses_gfl2_semantics && !p_params->gfl2_attachments) {
 					ERR_PRINT_ONCE("gfl2_semantics is supported only in single-view Forward+ scene alpha passes.");
 					continue;
@@ -541,7 +545,7 @@ void RenderForwardClustered::_render_list_template(RenderingDevice::DrawListID p
 		while (pipeline_key.ubershader < ubershader_iterations) {
 			// Skeleton and blend shape.
 			RD::VertexFormatID vertex_format = -1;
-			bool pipeline_motion_vectors = pipeline_key.color_pass_flags & SceneShaderForwardClustered::PIPELINE_COLOR_PASS_FLAG_MOTION_VECTORS;
+			bool pipeline_motion_vectors = (pipeline_key.color_pass_flags & SceneShaderForwardClustered::PIPELINE_COLOR_PASS_FLAG_MOTION_VECTORS) || shader->uses_gfl2_motion_inputs;
 			uint64_t input_mask = shader->get_vertex_input_mask(pipeline_key.version, pipeline_key.color_pass_flags, pipeline_key.ubershader);
 			if (surf->owner->mesh_instance.is_valid()) {
 				mesh_storage->mesh_instance_surface_get_vertex_arrays_and_format(surf->owner->mesh_instance, surf->surface_index, input_mask, pipeline_motion_vectors, emulate_point_size, vertex_array_rd, vertex_format);
@@ -2569,6 +2573,7 @@ void RenderForwardClustered::_render_scene(RenderDataRD *p_render_data, const Co
 				render_list_params.element_count = end - first;
 				render_list_params.element_offset = first;
 				render_list_params.gfl2_attachments = writer;
+				render_list_params.gfl2_motion_ready = p_render_data->scene_data->calculate_motion_vectors && !using_taa && !using_upscaling;
 				_render_list_with_draw_list(&render_list_params, writer ? alpha_framebuffer : ordinary_framebuffer, RD::DRAW_DEFAULT_ALL, Vector<Color>(), 0.0f, 0u, p_render_data->render_region);
 				first = end;
 			}

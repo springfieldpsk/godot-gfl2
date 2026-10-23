@@ -148,6 +148,8 @@ ShaderTypes::ShaderTypes() {
 	shader_modes[RSE::SHADER_SPATIAL].functions["fragment"].built_ins["UV"] = constt(ShaderLanguage::TYPE_VEC2);
 	shader_modes[RSE::SHADER_SPATIAL].functions["fragment"].built_ins["UV2"] = constt(ShaderLanguage::TYPE_VEC2);
 	shader_modes[RSE::SHADER_SPATIAL].functions["fragment"].built_ins["COLOR"] = constt(ShaderLanguage::TYPE_VEC4);
+	shader_modes[RSE::SHADER_SPATIAL].functions["fragment"].built_ins["GFL2_CURRENT_CLIP"] = constt(ShaderLanguage::TYPE_VEC4);
+	shader_modes[RSE::SHADER_SPATIAL].functions["fragment"].built_ins["GFL2_PREVIOUS_CLIP"] = constt(ShaderLanguage::TYPE_VEC4);
 	shader_modes[RSE::SHADER_SPATIAL].functions["fragment"].built_ins["GFL2_SEMANTIC"] = ShaderLanguage::TYPE_VEC4;
 	shader_modes[RSE::SHADER_SPATIAL].functions["fragment"].built_ins["GFL2_OWNER_STATE"] = ShaderLanguage::TYPE_UVEC2;
 	shader_modes[RSE::SHADER_SPATIAL].functions["fragment"].built_ins["GFL2_SOURCE_MOTION"] = ShaderLanguage::TYPE_VEC4;
@@ -255,6 +257,7 @@ ShaderTypes::ShaderTypes() {
 		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("sss_mode_skin") });
 		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("cull"), "back", "front", "disabled" });
 		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("gfl2_semantics") });
+		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("gfl2_motion_inputs") });
 		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("gfl2_color_disabled") });
 		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("unshaded") });
 		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("wireframe") });

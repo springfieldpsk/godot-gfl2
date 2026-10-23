@@ -245,6 +245,8 @@ public:
 		bool uses_point_size = false;
 		bool uses_alpha = false;
 		bool uses_gfl2_semantics = false;
+		bool uses_gfl2_motion_inputs = false;
+		bool uses_gfl2_clip_values = false;
 		bool uses_gfl2_outputs = false;
 		bool writes_gfl2_semantic = false;
 		bool writes_gfl2_owner_state = false;

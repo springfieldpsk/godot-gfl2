@@ -67,7 +67,7 @@ layout(location = 10) in uvec4 bone_attrib;
 layout(location = 11) in vec4 weight_attrib;
 #endif
 
-#ifdef MOTION_VECTORS
+#if defined(MOTION_VECTORS) || defined(GFL2_MOTION_INPUTS)
 layout(location = 12) in vec4 previous_vertex_attrib;
 
 #if defined(NORMAL_USED) || defined(TANGENT_USED)
@@ -111,7 +111,7 @@ layout(location = 5) out vec3 tangent_interp;
 layout(location = 6) out vec3 binormal_interp;
 #endif
 
-#ifdef MOTION_VECTORS
+#if defined(MOTION_VECTORS) || defined(GFL2_MOTION_INPUTS)
 layout(location = 7) out vec4 screen_position;
 layout(location = 8) out vec4 prev_screen_position;
 #endif
@@ -813,7 +813,7 @@ void main() {
 			instances.data[instance_index].prev_model_precision.xyz,
 #endif
 			prev_screen_position);
-#else
+#elif !defined(GFL2_MOTION_INPUTS)
 	// Unused output.
 	vec4 screen_position;
 #endif
@@ -857,6 +857,24 @@ void main() {
 #endif
 
 			screen_position);
+#ifdef GFL2_MOTION_INPUTS
+	// Source outline motion is based on the unexpanded mesh, not POSITION or
+	// a second invocation of the custom vertex shader. History is supplied by
+	// the renderer's existing current/previous mesh buffers and scene data.
+	vec3 source_previous_vertex = previous_vertex_attrib.xyz * instances.data[instance_index].compressed_aabb_size_pad.xyz + instances.data[instance_index].compressed_aabb_position_pad.xyz;
+	mat3x4 current_transform = instances.data[instance_index].transform;
+	mat3x4 previous_transform = instances.data[instance_index].prev_transform;
+	mat4 current_model = transpose(mat4(current_transform[0], current_transform[1], current_transform[2], vec4(0, 0, 0, 1)));
+	mat4 previous_model = transpose(mat4(previous_transform[0], previous_transform[1], previous_transform[2], vec4(0, 0, 0, 1)));
+	mat4 current_view = transpose(mat4(scene_data_block.data.view_matrix[0], scene_data_block.data.view_matrix[1], scene_data_block.data.view_matrix[2], vec4(0, 0, 0, 1)));
+	mat4 previous_view = transpose(mat4(scene_data_block.prev_data.view_matrix[0], scene_data_block.prev_data.view_matrix[1], scene_data_block.prev_data.view_matrix[2], vec4(0, 0, 0, 1)));
+	screen_position = scene_data_block.data.projection_matrix * (current_view * (current_model * vec4(vertex, 1)));
+	prev_screen_position = scene_data_block.prev_data.projection_matrix * (previous_view * (previous_model * vec4(source_previous_vertex, 1)));
+	// Explicit Vulkan clip-Y-down to source clip-Y-up bridge. No mapping into
+	// Godot velocity is performed; consumers apply the source PS expression.
+	screen_position.y = -screen_position.y;
+	prev_screen_position.y = -prev_screen_position.y;
+#endif
 }
 
 #[fragment]
@@ -928,7 +946,7 @@ layout(location = 5) in vec3 tangent_interp;
 layout(location = 6) in vec3 binormal_interp;
 #endif
 
-#ifdef MOTION_VECTORS
+#if defined(MOTION_VECTORS) || defined(GFL2_MOTION_INPUTS)
 layout(location = 7) in vec4 screen_position;
 layout(location = 8) in vec4 prev_screen_position;
 #endif

@@ -61,6 +61,7 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 	uses_point_size = false;
 	uses_alpha = false;
 	uses_gfl2_semantics = false;
+	uses_gfl2_motion_inputs = uses_gfl2_clip_values = false;
 	uses_gfl2_outputs = false;
 	writes_gfl2_semantic = writes_gfl2_owner_state = writes_gfl2_motion = false;
 	gfl2_color_disabled = false;
@@ -127,6 +128,9 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 	actions.render_mode_flags["world_vertex_coords"] = &uses_world_coordinates;
 
 	actions.render_mode_flags["gfl2_semantics"] = &uses_gfl2_semantics;
+	actions.render_mode_flags["gfl2_motion_inputs"] = &uses_gfl2_motion_inputs;
+	actions.usage_flag_pointers["GFL2_CURRENT_CLIP"] = &uses_gfl2_clip_values;
+	actions.usage_flag_pointers["GFL2_PREVIOUS_CLIP"] = &uses_gfl2_clip_values;
 	actions.render_mode_flags["gfl2_color_disabled"] = &gfl2_color_disabled;
 	actions.usage_flag_pointers["GFL2_SEMANTIC"] = &uses_gfl2_outputs;
 	actions.usage_flag_pointers["GFL2_OWNER_STATE"] = &uses_gfl2_outputs;
@@ -191,6 +195,10 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 
 	if (err == OK && (((uses_gfl2_outputs || gfl2_color_disabled) && !uses_gfl2_semantics) || (uses_gfl2_semantics && (!uses_alpha || uses_alpha_clip || uses_alpha_antialiasing || uses_depth_prepass_alpha)))) {
 		ERR_PRINT("gfl2_semantics requires an explicit ALPHA transparent shader without alpha prepass, scissor/hash or alpha-to-coverage.");
+		err = ERR_INVALID_DATA;
+	}
+	if (err == OK && ((uses_gfl2_motion_inputs && !uses_gfl2_semantics) || (uses_gfl2_clip_values && !uses_gfl2_motion_inputs))) {
+		ERR_PRINT("gfl2_motion_inputs requires gfl2_semantics; clip inputs require the explicit motion mode.");
 		err = ERR_INVALID_DATA;
 	}
 	if (err != OK) {
@@ -782,6 +790,9 @@ void SceneShaderForwardClustered::init(const String p_defines) {
 		actions.renames["NORMAL_MAP"] = "normal_map";
 		actions.renames["NORMAL_MAP_DEPTH"] = "normal_map_depth";
 		actions.renames["BENT_NORMAL_MAP"] = "bent_normal_map";
+		actions.renames["GFL2_CURRENT_CLIP"] = "screen_position";
+		actions.renames["GFL2_PREVIOUS_CLIP"] = "prev_screen_position";
+		actions.render_mode_defines["gfl2_motion_inputs"] = "#define GFL2_MOTION_INPUTS\n";
 		actions.renames["GFL2_SEMANTIC"] = "gfl2_semantic";
 		actions.renames["GFL2_OWNER_STATE"] = "gfl2_owner_state";
 		actions.renames["GFL2_SOURCE_MOTION"] = "gfl2_source_motion";

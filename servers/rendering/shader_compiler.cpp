@@ -1681,7 +1681,7 @@ Error ShaderCompiler::compile(RSE::ShaderMode p_mode, const String &p_code, Iden
 	fragment_varyings.clear();
 
 	shader = parser.get_shader();
-	ERR_FAIL_COND_V_MSG((shader->render_modes.has("gfl2_semantics") || shader->render_modes.has("gfl2_color_disabled")) && !actions.supports_gfl2_semantics, ERR_UNAVAILABLE, "gfl2_semantics requires Forward+ spatial rendering.");
+	ERR_FAIL_COND_V_MSG((shader->render_modes.has("gfl2_semantics") || shader->render_modes.has("gfl2_color_disabled") || shader->render_modes.has("gfl2_motion_inputs")) && !actions.supports_gfl2_semantics, ERR_UNAVAILABLE, "gfl2_semantics requires Forward+ spatial rendering.");
 	for (const KeyValue<StringName, SL::ShaderNode::Uniform> &E : shader->uniforms) {
 		ERR_FAIL_COND_V_MSG(E.value.filter == SL::FILTER_GFL2_BILINEAR && (!actions.supports_gfl2_bilinear || p_mode != RSE::SHADER_SPATIAL), ERR_UNAVAILABLE, "filter_gfl2_bilinear requires Forward+ spatial rendering.");
 	}
