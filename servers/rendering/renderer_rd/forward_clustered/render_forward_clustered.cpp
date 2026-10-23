@@ -124,6 +124,7 @@ void RenderForwardClustered::RenderBufferDataForwardClustered::free_data() {
 		render_buffers->clear_context(RB_SCOPE_SSAO);
 		render_buffers->clear_context(RB_SCOPE_SSR);
 		render_buffers->clear_context(RB_SCOPE_SSCS);
+		render_buffers->clear_context("gfl2");
 	}
 
 	if (cluster_builder) {
@@ -183,7 +184,24 @@ RID RenderForwardClustered::RenderBufferDataForwardClustered::get_color_only_fb(
 	}
 }
 
-RID RenderForwardClustered::RenderBufferDataForwardClustered::get_color_pass_fb(uint32_t p_color_pass_flags) {
+void RenderForwardClustered::RenderBufferDataForwardClustered::ensure_gfl2_attachments() {
+	if (!render_buffers->has_texture("gfl2", "semantic")) {
+		const uint32_t usage = RD::TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | RD::TEXTURE_USAGE_SAMPLING_BIT;
+		render_buffers->create_texture("gfl2", "semantic", RD::DATA_FORMAT_R32G32B32A32_SFLOAT, usage, render_buffers->get_texture_samples());
+		render_buffers->create_texture("gfl2", "owner_state", RD::DATA_FORMAT_R32G32_UINT, usage, render_buffers->get_texture_samples());
+		render_buffers->create_texture("gfl2", "source_motion", RD::DATA_FORMAT_R32G32B32A32_SFLOAT, usage, render_buffers->get_texture_samples());
+	}
+}
+
+void RenderForwardClustered::RenderBufferDataForwardClustered::clear_gfl2_attachments() {
+	// Clear only the auxiliary attachments. Main color/depth are loaded by the
+	// normal alpha framebuffer, preserving all opaque and transparent coverage.
+	RID fb = FramebufferCacheRD::get_singleton()->get_cache(render_buffers->get_texture("gfl2", "semantic"), render_buffers->get_texture("gfl2", "owner_state"), render_buffers->get_texture("gfl2", "source_motion"));
+	RD::get_singleton()->draw_list_begin(fb, RD::DRAW_CLEAR_COLOR_ALL, Vector<Color>({ Color(0, 0, 0, 0), Color(0, 0, 0, 0), Color(0, 0, 0, 0) }));
+	RD::get_singleton()->draw_list_end();
+}
+
+RID RenderForwardClustered::RenderBufferDataForwardClustered::get_color_pass_fb(uint32_t p_color_pass_flags, bool p_gfl2) {
 	ERR_FAIL_NULL_V(render_buffers, RID());
 	bool use_msaa = render_buffers->get_msaa_3d() != RSE::VIEWPORT_MSAA_DISABLED;
 
@@ -203,6 +221,16 @@ RID RenderForwardClustered::RenderBufferDataForwardClustered::get_color_pass_fb(
 	}
 
 	RID depth = use_msaa ? render_buffers->get_texture(RB_SCOPE_BUFFERS, RB_TEX_DEPTH_MSAA) : render_buffers->get_depth_texture();
+
+	if (p_gfl2) {
+		ERR_FAIL_COND_V(v_count != 1, RID());
+		ensure_gfl2_attachments();
+		RID vrs_texture = render_buffers->has_texture(RB_SCOPE_VRS, RB_TEXTURE) ? render_buffers->get_texture(RB_SCOPE_VRS, RB_TEXTURE) : RID();
+		if (vrs_texture.is_valid()) {
+			return FramebufferCacheRD::get_singleton()->get_cache(color, specular, velocity_buffer, render_buffers->get_texture("gfl2", "semantic"), render_buffers->get_texture("gfl2", "owner_state"), render_buffers->get_texture("gfl2", "source_motion"), depth, vrs_texture);
+		}
+		return FramebufferCacheRD::get_singleton()->get_cache(color, specular, velocity_buffer, render_buffers->get_texture("gfl2", "semantic"), render_buffers->get_texture("gfl2", "owner_state"), render_buffers->get_texture("gfl2", "source_motion"), depth);
+	}
 
 	if (render_buffers->has_texture(RB_SCOPE_VRS, RB_TEXTURE)) {
 		RID vrs_texture = render_buffers->get_texture(RB_SCOPE_VRS, RB_TEXTURE);
@@ -466,6 +494,11 @@ void RenderForwardClustered::_render_list_template(RenderingDevice::DrawListID p
 					pipeline_key.color_pass_flags |= SceneShaderForwardClustered::PIPELINE_COLOR_PASS_FLAG_MULTIVIEW;
 				}
 
+				pipeline_key.gfl2_attachments = p_params->gfl2_attachments;
+				if (shader->uses_gfl2_semantics && !p_params->gfl2_attachments) {
+					ERR_PRINT_ONCE("gfl2_semantics is supported only in single-view Forward+ scene alpha passes.");
+					continue;
+				}
 				pipeline_key.version = SceneShaderForwardClustered::PIPELINE_VERSION_COLOR_PASS;
 			} break;
 			case PASS_MODE_SHADOW:
@@ -2504,9 +2537,42 @@ void RenderForwardClustered::_render_scene(RenderDataRD *p_render_data, const Co
 		// Motion vectors should not be overwritten by transparent objects.
 		transparent_color_pass_flags &= ~uint32_t(COLOR_PASS_FLAG_MOTION_VECTORS);
 
-		RID alpha_framebuffer = rb_data.is_valid() ? rb_data->get_color_pass_fb(transparent_color_pass_flags) : color_only_framebuffer;
+		bool gfl2_attachments = false;
+		if (rb_data.is_valid() && !is_multiview) {
+			for (const GeometryInstanceSurfaceDataCache *surface : render_list[RENDER_LIST_ALPHA].elements) {
+				gfl2_attachments |= surface->shader->uses_gfl2_semantics;
+			}
+			// Once allocated, clear every frame, including after all writers are
+			// hidden. Never expose stale owner labels to a later compositor.
+			if (gfl2_attachments || rb->has_texture("gfl2", "semantic")) {
+				rb_data->ensure_gfl2_attachments();
+				rb_data->clear_gfl2_attachments();
+			}
+		}
+		RID alpha_framebuffer = rb_data.is_valid() ? rb_data->get_color_pass_fb(transparent_color_pass_flags, gfl2_attachments) : color_only_framebuffer;
 		RenderListParameters render_list_params(render_list[RENDER_LIST_ALPHA].elements.ptr(), render_list[RENDER_LIST_ALPHA].element_info.ptr(), render_list[RENDER_LIST_ALPHA].elements.size(), reverse_cull, PASS_MODE_COLOR, transparent_color_pass_flags, rb_data.is_null(), p_render_data->directional_light_soft_shadows, rp_uniform_set, get_debug_draw_mode() == RSE::VIEWPORT_DEBUG_DRAW_WIREFRAME, Vector2(), p_render_data->scene_data->lod_distance_multiplier, p_render_data->scene_data->screen_mesh_lod_threshold, p_render_data->scene_data->view_count, 0, base_specialization, !is_reflection_probe);
-		_render_list_with_draw_list(&render_list_params, alpha_framebuffer, RD::DRAW_DEFAULT_ALL, Vector<Color>(), 0.0f, 0u, p_render_data->render_region);
+		if (!gfl2_attachments) {
+			_render_list_with_draw_list(&render_list_params, alpha_framebuffer, RD::DRAW_DEFAULT_ALL, Vector<Color>(), 0.0f, 0u, p_render_data->render_region);
+		} else {
+			// Preserve the existing sorted order exactly. RD requires the fragment
+			// output mask to match the framebuffer, so split only at writer changes.
+			RID ordinary_framebuffer = rb_data->get_color_pass_fb(transparent_color_pass_flags);
+			uint32_t first = 0;
+			while (first < render_list[RENDER_LIST_ALPHA].elements.size()) {
+				bool writer = render_list[RENDER_LIST_ALPHA].elements[first]->shader->uses_gfl2_semantics;
+				uint32_t end = first + 1;
+				while (end < render_list[RENDER_LIST_ALPHA].elements.size() && render_list[RENDER_LIST_ALPHA].elements[end]->shader->uses_gfl2_semantics == writer) {
+					end++;
+				}
+				render_list_params.elements = render_list[RENDER_LIST_ALPHA].elements.ptr() + first;
+				render_list_params.element_info = render_list[RENDER_LIST_ALPHA].element_info.ptr() + first;
+				render_list_params.element_count = end - first;
+				render_list_params.element_offset = first;
+				render_list_params.gfl2_attachments = writer;
+				_render_list_with_draw_list(&render_list_params, writer ? alpha_framebuffer : ordinary_framebuffer, RD::DRAW_DEFAULT_ALL, Vector<Color>(), 0.0f, 0u, p_render_data->render_region);
+				first = end;
+			}
+		}
 	}
 
 	RD::get_singleton()->draw_command_end_label();
@@ -4789,6 +4855,11 @@ static RD::FramebufferFormatID _get_reflection_probe_depth_framebuffer_format_fo
 }
 
 void RenderForwardClustered::_mesh_compile_pipeline_for_surface(SceneShaderForwardClustered::ShaderData *p_shader, void *p_mesh_surface, bool p_ubershader, bool p_instanced_surface, RSE::PipelineSource p_source, SceneShaderForwardClustered::ShaderData::PipelineKey &r_pipeline_key, Vector<ShaderPipelinePair> *r_pipeline_pairs) {
+	// Generic preloads have no semantic attachments; the actual alpha draw
+	// creates its pipeline with the matching framebuffer format.
+	if (p_shader->uses_gfl2_semantics && r_pipeline_key.version == SceneShaderForwardClustered::PIPELINE_VERSION_COLOR_PASS) {
+		return;
+	}
 	RendererRD::MeshStorage *mesh_storage = RendererRD::MeshStorage::get_singleton();
 	uint64_t input_mask = p_shader->get_vertex_input_mask(r_pipeline_key.version, r_pipeline_key.color_pass_flags, p_ubershader);
 	bool pipeline_motion_vectors = r_pipeline_key.color_pass_flags & SceneShaderForwardClustered::PIPELINE_COLOR_PASS_FLAG_MOTION_VECTORS;

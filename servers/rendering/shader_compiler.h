@@ -99,6 +99,7 @@ public:
 		HashMap<StringName, String> usage_defines;
 		HashMap<StringName, String> custom_samplers;
 		bool supports_gfl2_bilinear = false;
+		bool supports_gfl2_semantics = false;
 		ShaderLanguage::TextureFilter default_filter = ShaderLanguage::TextureFilter::FILTER_NEAREST;
 		ShaderLanguage::TextureRepeat default_repeat = ShaderLanguage::TextureRepeat::REPEAT_DISABLE;
 		int base_texture_binding_index = 0;

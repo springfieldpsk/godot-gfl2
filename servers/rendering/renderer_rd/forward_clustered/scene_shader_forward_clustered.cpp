@@ -60,6 +60,10 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 
 	uses_point_size = false;
 	uses_alpha = false;
+	uses_gfl2_semantics = false;
+	uses_gfl2_outputs = false;
+	writes_gfl2_semantic = writes_gfl2_owner_state = writes_gfl2_motion = false;
+	gfl2_color_disabled = false;
 	uses_alpha_clip = false;
 	uses_alpha_antialiasing = false;
 	uses_blend_alpha = false;
@@ -122,6 +126,11 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 	actions.render_mode_flags["particle_trails"] = &uses_particle_trails;
 	actions.render_mode_flags["world_vertex_coords"] = &uses_world_coordinates;
 
+	actions.render_mode_flags["gfl2_semantics"] = &uses_gfl2_semantics;
+	actions.render_mode_flags["gfl2_color_disabled"] = &gfl2_color_disabled;
+	actions.usage_flag_pointers["GFL2_SEMANTIC"] = &uses_gfl2_outputs;
+	actions.usage_flag_pointers["GFL2_OWNER_STATE"] = &uses_gfl2_outputs;
+	actions.usage_flag_pointers["GFL2_SOURCE_MOTION"] = &uses_gfl2_outputs;
 	actions.usage_flag_pointers["ALPHA"] = &uses_alpha;
 	actions.usage_flag_pointers["ALPHA_SCISSOR_THRESHOLD"] = &uses_alpha_clip;
 	actions.usage_flag_pointers["ALPHA_HASH_SCALE"] = &uses_alpha_clip;
@@ -149,6 +158,9 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 
 	actions.write_flag_pointers["MODELVIEW_MATRIX"] = &writes_modelview_or_projection;
 	actions.write_flag_pointers["PROJECTION_MATRIX"] = &writes_modelview_or_projection;
+	actions.write_flag_pointers["GFL2_SEMANTIC"] = &writes_gfl2_semantic;
+	actions.write_flag_pointers["GFL2_OWNER_STATE"] = &writes_gfl2_owner_state;
+	actions.write_flag_pointers["GFL2_SOURCE_MOTION"] = &writes_gfl2_motion;
 	actions.write_flag_pointers["VERTEX"] = &uses_vertex;
 	actions.write_flag_pointers["POSITION"] = &uses_position;
 	actions.write_flag_pointers["TANGENT"] = &writes_tangent;
@@ -177,6 +189,10 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 		err = SceneShaderForwardClustered::singleton->compiler.compile(RSE::SHADER_SPATIAL, code, &actions, path, gen_code);
 	}
 
+	if (err == OK && (((uses_gfl2_outputs || gfl2_color_disabled) && !uses_gfl2_semantics) || (uses_gfl2_semantics && (!uses_alpha || uses_alpha_clip || uses_alpha_antialiasing || uses_depth_prepass_alpha)))) {
+		ERR_PRINT("gfl2_semantics requires an explicit ALPHA transparent shader without alpha prepass, scissor/hash or alpha-to-coverage.");
+		err = ERR_INVALID_DATA;
+	}
 	if (err != OK) {
 		if (version.is_valid()) {
 			SceneShaderForwardClustered::singleton->shader.version_free(version);
@@ -480,6 +496,20 @@ void SceneShaderForwardClustered::ShaderData::_create_pipeline(PipelineKey p_pip
 		}
 	}
 
+	if (p_pipeline_key.gfl2_attachments) {
+		blend_state.attachments.resize(6);
+		if (gfl2_color_disabled) {
+			RD::PipelineColorBlendState::Attachment &color = blend_state.attachments.write[0];
+			color.write_r = color.write_g = color.write_b = color.write_a = false;
+		}
+		const bool writes[] = { writes_gfl2_semantic, writes_gfl2_owner_state, writes_gfl2_motion };
+		for (int i = 3; i < 6; i++) {
+			RD::PipelineColorBlendState::Attachment &attachment = blend_state.attachments.write[i];
+			attachment.enable_blend = false;
+			attachment.write_r = attachment.write_g = attachment.write_b = attachment.write_a = uses_gfl2_semantics && writes[i - 3];
+		}
+	}
+
 	// Convert the specialization from the key to pipeline specialization constants.
 	Vector<RD::PipelineSpecializationConstant> specialization_constants;
 	RD::PipelineSpecializationConstant sc;
@@ -752,6 +782,10 @@ void SceneShaderForwardClustered::init(const String p_defines) {
 		actions.renames["NORMAL_MAP"] = "normal_map";
 		actions.renames["NORMAL_MAP_DEPTH"] = "normal_map_depth";
 		actions.renames["BENT_NORMAL_MAP"] = "bent_normal_map";
+		actions.renames["GFL2_SEMANTIC"] = "gfl2_semantic";
+		actions.renames["GFL2_OWNER_STATE"] = "gfl2_owner_state";
+		actions.renames["GFL2_SOURCE_MOTION"] = "gfl2_source_motion";
+		actions.render_mode_defines["gfl2_semantics"] = "#define GFL2_SEMANTICS\n";
 		actions.renames["ALBEDO"] = "albedo_highp";
 		actions.renames["ALPHA"] = "alpha_highp";
 		actions.renames["PREMUL_ALPHA_FACTOR"] = "premul_alpha";
@@ -926,6 +960,7 @@ void SceneShaderForwardClustered::init(const String p_defines) {
 		actions.base_varying_index = 15;
 
 		actions.supports_gfl2_bilinear = true;
+		actions.supports_gfl2_semantics = true;
 		actions.default_filter = ShaderLanguage::FILTER_LINEAR_MIPMAP;
 		actions.default_repeat = ShaderLanguage::REPEAT_ENABLE;
 		actions.global_buffer_array_variable = "global_shader_uniforms.data";

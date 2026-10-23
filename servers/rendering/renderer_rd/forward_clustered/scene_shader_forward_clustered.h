@@ -200,6 +200,7 @@ public:
 			ShaderSpecialization shader_specialization = {};
 			uint32_t wireframe = false;
 			uint32_t ubershader = false;
+			bool gfl2_attachments = false;
 
 			uint32_t hash() const {
 				uint32_t h = hash_murmur3_one_64(vertex_format_id);
@@ -213,6 +214,7 @@ public:
 				h = hash_murmur3_one_32(shader_specialization.packed_2, h);
 				h = hash_murmur3_one_32(wireframe, h);
 				h = hash_murmur3_one_32(ubershader, h);
+				h = hash_murmur3_one_32(gfl2_attachments, h);
 				return hash_fmix32(h);
 			}
 		};
@@ -242,6 +244,12 @@ public:
 
 		bool uses_point_size = false;
 		bool uses_alpha = false;
+		bool uses_gfl2_semantics = false;
+		bool uses_gfl2_outputs = false;
+		bool writes_gfl2_semantic = false;
+		bool writes_gfl2_owner_state = false;
+		bool writes_gfl2_motion = false;
+		bool gfl2_color_disabled = false;
 		bool uses_blend_alpha = false;
 		bool uses_alpha_clip = false;
 		bool uses_alpha_antialiasing = false;

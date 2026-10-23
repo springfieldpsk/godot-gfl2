@@ -1037,6 +1037,12 @@ layout(location = 0) out vec4 frag_color;
 layout(location = 2) out vec2 motion_vector;
 #endif
 
+#if defined(GFL2_SEMANTICS) && !defined(MODE_RENDER_DEPTH)
+layout(location = 3) out vec4 gfl2_semantic_output;
+layout(location = 4) out uvec2 gfl2_owner_state_output;
+layout(location = 5) out vec4 gfl2_source_motion_output;
+#endif
+
 #include "../scene_forward_aa_inc.glsl"
 
 #if !defined(MODE_RENDER_DEPTH) && !defined(MODE_UNSHADED)
@@ -1186,6 +1192,9 @@ void fragment_shader(in SceneData scene_data) {
 	vec3 eye_offset = vec3(0.0, 0.0, 0.0);
 	vec3 view_highp = -normalize(vertex_interp);
 #endif
+	vec4 gfl2_semantic = vec4(0.0);
+	uvec2 gfl2_owner_state = uvec2(0u);
+	vec4 gfl2_source_motion = vec4(0.0);
 	vec3 albedo_highp = vec3(1.0);
 	vec3 backlight = vec3(0.0);
 	vec4 transmittance_color = vec4(0.0, 0.0, 0.0, 1.0);
@@ -1314,6 +1323,12 @@ void fragment_shader(in SceneData scene_data) {
 
 	{
 #CODE : FRAGMENT
+
+#if defined(GFL2_SEMANTICS) && !defined(MODE_RENDER_DEPTH)
+	gfl2_semantic_output = gfl2_semantic;
+	gfl2_owner_state_output = gfl2_owner_state;
+	gfl2_source_motion_output = gfl2_source_motion;
+#endif
 	}
 
 	float roughness = roughness_highp;
