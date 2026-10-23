@@ -1059,6 +1059,7 @@ layout(location = 2) out vec2 motion_vector;
 layout(location = 3) out vec4 gfl2_semantic_output;
 layout(location = 4) out uvec2 gfl2_owner_state_output;
 layout(location = 5) out vec4 gfl2_source_motion_output;
+layout(location = 6) out float gfl2_contour_mask_output;
 #endif
 
 #include "../scene_forward_aa_inc.glsl"
@@ -1213,6 +1214,7 @@ void fragment_shader(in SceneData scene_data) {
 	vec4 gfl2_semantic = vec4(0.0);
 	uvec2 gfl2_owner_state = uvec2(0u);
 	vec4 gfl2_source_motion = vec4(0.0);
+	float gfl2_contour_mask = 0.0;
 	vec3 albedo_highp = vec3(1.0);
 	vec3 backlight = vec3(0.0);
 	vec4 transmittance_color = vec4(0.0, 0.0, 0.0, 1.0);
@@ -1346,6 +1348,7 @@ void fragment_shader(in SceneData scene_data) {
 	gfl2_semantic_output = gfl2_semantic;
 	gfl2_owner_state_output = gfl2_owner_state;
 	gfl2_source_motion_output = gfl2_source_motion;
+	gfl2_contour_mask_output = gfl2_contour_mask;
 #endif
 	}
 

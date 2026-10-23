@@ -63,7 +63,7 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 	uses_gfl2_semantics = false;
 	uses_gfl2_motion_inputs = uses_gfl2_clip_values = false;
 	uses_gfl2_outputs = false;
-	writes_gfl2_semantic = writes_gfl2_owner_state = writes_gfl2_motion = false;
+	writes_gfl2_semantic = writes_gfl2_owner_state = writes_gfl2_motion = writes_gfl2_contour_mask = false;
 	gfl2_color_disabled = false;
 	gfl2_color_rgb_only = gfl2_color_r_only = gfl2_alpha_src_alpha = false;
 	uses_alpha_clip = false;
@@ -139,6 +139,7 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 	actions.usage_flag_pointers["GFL2_SEMANTIC"] = &uses_gfl2_outputs;
 	actions.usage_flag_pointers["GFL2_OWNER_STATE"] = &uses_gfl2_outputs;
 	actions.usage_flag_pointers["GFL2_SOURCE_MOTION"] = &uses_gfl2_outputs;
+	actions.usage_flag_pointers["GFL2_CONTOUR_MASK"] = &uses_gfl2_outputs;
 	actions.usage_flag_pointers["ALPHA"] = &uses_alpha;
 	actions.usage_flag_pointers["ALPHA_SCISSOR_THRESHOLD"] = &uses_alpha_clip;
 	actions.usage_flag_pointers["ALPHA_HASH_SCALE"] = &uses_alpha_clip;
@@ -169,6 +170,7 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 	actions.write_flag_pointers["GFL2_SEMANTIC"] = &writes_gfl2_semantic;
 	actions.write_flag_pointers["GFL2_OWNER_STATE"] = &writes_gfl2_owner_state;
 	actions.write_flag_pointers["GFL2_SOURCE_MOTION"] = &writes_gfl2_motion;
+	actions.write_flag_pointers["GFL2_CONTOUR_MASK"] = &writes_gfl2_contour_mask;
 	actions.write_flag_pointers["VERTEX"] = &uses_vertex;
 	actions.write_flag_pointers["POSITION"] = &uses_position;
 	actions.write_flag_pointers["TANGENT"] = &writes_tangent;
@@ -513,7 +515,7 @@ void SceneShaderForwardClustered::ShaderData::_create_pipeline(PipelineKey p_pip
 	}
 
 	if (p_pipeline_key.gfl2_attachments) {
-		blend_state.attachments.resize(6);
+		blend_state.attachments.resize(7);
 		RD::PipelineColorBlendState::Attachment &color = blend_state.attachments.write[0];
 		if (gfl2_color_disabled) {
 			color.write_r = color.write_g = color.write_b = color.write_a = false;
@@ -525,8 +527,8 @@ void SceneShaderForwardClustered::ShaderData::_create_pipeline(PipelineKey p_pip
 		if (gfl2_alpha_src_alpha) {
 			color.src_alpha_blend_factor = RD::BLEND_FACTOR_SRC_ALPHA;
 		}
-		const bool writes[] = { writes_gfl2_semantic, writes_gfl2_owner_state, writes_gfl2_motion };
-		for (int i = 3; i < 6; i++) {
+		const bool writes[] = { writes_gfl2_semantic, writes_gfl2_owner_state, writes_gfl2_motion, writes_gfl2_contour_mask };
+		for (int i = 3; i < 7; i++) {
 			RD::PipelineColorBlendState::Attachment &attachment = blend_state.attachments.write[i];
 			attachment.enable_blend = false;
 			attachment.write_r = attachment.write_g = attachment.write_b = attachment.write_a = uses_gfl2_semantics && writes[i - 3];
@@ -811,6 +813,7 @@ void SceneShaderForwardClustered::init(const String p_defines) {
 		actions.renames["GFL2_SEMANTIC"] = "gfl2_semantic";
 		actions.renames["GFL2_OWNER_STATE"] = "gfl2_owner_state";
 		actions.renames["GFL2_SOURCE_MOTION"] = "gfl2_source_motion";
+		actions.renames["GFL2_CONTOUR_MASK"] = "gfl2_contour_mask";
 		actions.render_mode_defines["gfl2_semantics"] = "#define GFL2_SEMANTICS\n";
 		actions.renames["ALBEDO"] = "albedo_highp";
 		actions.renames["ALPHA"] = "alpha_highp";

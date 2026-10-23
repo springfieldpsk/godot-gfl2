@@ -153,6 +153,7 @@ ShaderTypes::ShaderTypes() {
 	shader_modes[RSE::SHADER_SPATIAL].functions["fragment"].built_ins["GFL2_SEMANTIC"] = ShaderLanguage::TYPE_VEC4;
 	shader_modes[RSE::SHADER_SPATIAL].functions["fragment"].built_ins["GFL2_OWNER_STATE"] = ShaderLanguage::TYPE_UVEC2;
 	shader_modes[RSE::SHADER_SPATIAL].functions["fragment"].built_ins["GFL2_SOURCE_MOTION"] = ShaderLanguage::TYPE_VEC4;
+	shader_modes[RSE::SHADER_SPATIAL].functions["fragment"].built_ins["GFL2_CONTOUR_MASK"] = ShaderLanguage::TYPE_FLOAT;
 	shader_modes[RSE::SHADER_SPATIAL].functions["fragment"].built_ins["ALBEDO"] = ShaderLanguage::TYPE_VEC3;
 	shader_modes[RSE::SHADER_SPATIAL].functions["fragment"].built_ins["PREMUL_ALPHA_FACTOR"] = ShaderLanguage::TYPE_FLOAT;
 	shader_modes[RSE::SHADER_SPATIAL].functions["fragment"].built_ins["ALPHA"] = ShaderLanguage::TYPE_FLOAT;
