@@ -68,6 +68,7 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 	gfl2_color_rgb_only = gfl2_color_r_only = gfl2_alpha_src_alpha = false;
 	uses_gfl2_idmask = writes_gfl2_idmask = gfl2_idmask_r = gfl2_idmask_or = gfl2_idmask_g = false;
 	uses_gfl2_character_mask = writes_gfl2_character_mask = gfl2_character_mask = false;
+	uses_gfl2_source_ext = writes_gfl2_source_ext = gfl2_source_ext = gfl2_source_ext_gba = false;
 	uses_alpha_clip = false;
 	uses_alpha_antialiasing = false;
 	uses_blend_alpha = false;
@@ -131,6 +132,10 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 	actions.render_mode_flags["world_vertex_coords"] = &uses_world_coordinates;
 
 	actions.render_mode_flags["gfl2_semantics"] = &uses_gfl2_semantics;
+	actions.render_mode_flags["gfl2_source_ext"] = &gfl2_source_ext;
+	actions.render_mode_flags["gfl2_source_ext_gba"] = &gfl2_source_ext_gba;
+	actions.usage_flag_pointers["GFL2_SOURCE_EXT"] = &uses_gfl2_source_ext;
+	actions.write_flag_pointers["GFL2_SOURCE_EXT"] = &writes_gfl2_source_ext;
 	actions.render_mode_flags["gfl2_motion_inputs"] = &uses_gfl2_motion_inputs;
 	actions.usage_flag_pointers["GFL2_CURRENT_CLIP"] = &uses_gfl2_clip_values;
 	actions.usage_flag_pointers["GFL2_PREVIOUS_CLIP"] = &uses_gfl2_clip_values;
@@ -219,6 +224,10 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 	}
 	if (err == OK && (((gfl2_color_rgb_only || gfl2_color_r_only || gfl2_alpha_src_alpha) && !uses_gfl2_semantics) || (int(gfl2_color_disabled) + int(gfl2_color_rgb_only) + int(gfl2_color_r_only) > 1) || (gfl2_alpha_src_alpha && blend_mode != BLEND_MODE_MIX))) {
 		ERR_PRINT("GFL2 color modes require gfl2_semantics, mutually exclusive RT0 masks, and blend_mix for gfl2_alpha_src_alpha.");
+		err = ERR_INVALID_DATA;
+	}
+	if (err == OK && (uses_gfl2_source_ext || gfl2_source_ext || gfl2_source_ext_gba) && (!gfl2_source_ext || !writes_gfl2_source_ext || !uses_gfl2_semantics || writes_gfl2_semantic || writes_gfl2_owner_state || writes_gfl2_motion || writes_gfl2_contour_mask || writes_gfl2_character_mask || writes_gfl2_idmask || uses_gfl2_motion_inputs)) {
+		ERR_PRINT("GFL2 source ext requires explicit mode, assigned value and exclusive auxiliary writes.");
 		err = ERR_INVALID_DATA;
 	}
 	if (err == OK && (uses_gfl2_character_mask || gfl2_character_mask) && (!gfl2_character_mask || !writes_gfl2_character_mask || !uses_gfl2_semantics || !gfl2_color_disabled || writes_gfl2_semantic || writes_gfl2_owner_state || writes_gfl2_motion || writes_gfl2_contour_mask || writes_gfl2_idmask || uses_gfl2_motion_inputs || gfl2_alpha_src_alpha || blend_mode != BLEND_MODE_MIX || depth_drawi != DEPTH_DRAW_DISABLED || depth_test_disabledi || depth_test_invertedi || stencil_readi || stencil_writei || stencil_write_depth_faili)) {
@@ -550,11 +559,14 @@ void SceneShaderForwardClustered::ShaderData::_create_pipeline(PipelineKey p_pip
 		if (gfl2_alpha_src_alpha) {
 			color.src_alpha_blend_factor = RD::BLEND_FACTOR_SRC_ALPHA;
 		}
-		const bool writes[] = { writes_gfl2_semantic, writes_gfl2_owner_state, writes_gfl2_motion, writes_gfl2_contour_mask || writes_gfl2_character_mask };
+		const bool writes[] = { writes_gfl2_semantic || writes_gfl2_source_ext, writes_gfl2_owner_state, writes_gfl2_motion, writes_gfl2_contour_mask || writes_gfl2_character_mask };
 		for (int i = 3; i < 7; i++) {
 			RD::PipelineColorBlendState::Attachment &attachment = blend_state.attachments.write[i];
 			attachment.enable_blend = false;
 			attachment.write_r = attachment.write_g = attachment.write_b = attachment.write_a = uses_gfl2_semantics && writes[i - 3];
+		}
+		if (gfl2_source_ext_gba) {
+			blend_state.attachments.write[3].write_r = false;
 		}
 		RD::PipelineColorBlendState::Attachment &idmask = blend_state.attachments.write[7];
 		idmask.enable_blend = false;
@@ -850,6 +862,8 @@ void SceneShaderForwardClustered::init(const String p_defines) {
 		actions.renames["GFL2_PREVIOUS_CLIP"] = "prev_screen_position";
 		actions.render_mode_defines["gfl2_motion_inputs"] = "#define GFL2_MOTION_INPUTS\n";
 		actions.renames["GFL2_SEMANTIC"] = "gfl2_semantic";
+		actions.renames["GFL2_SOURCE_EXT"] = "gfl2_source_ext_value";
+		actions.render_mode_defines["gfl2_source_ext"] = "#define GFL2_SOURCE_EXT\n";
 		actions.renames["GFL2_OWNER_STATE"] = "gfl2_owner_state";
 		actions.renames["GFL2_SOURCE_MOTION"] = "gfl2_source_motion";
 		actions.renames["GFL2_CONTOUR_MASK"] = "gfl2_contour_mask";

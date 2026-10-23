@@ -1218,6 +1218,7 @@ void fragment_shader(in SceneData scene_data) {
 	vec3 view_highp = -normalize(vertex_interp);
 #endif
 	vec4 gfl2_semantic = vec4(0.0);
+	vec4 gfl2_source_ext_value = vec4(0.0);
 	uvec2 gfl2_owner_state = uvec2(0u);
 	vec4 gfl2_source_motion = vec4(0.0);
 	float gfl2_contour_mask = 0.0;
@@ -1353,7 +1354,11 @@ void fragment_shader(in SceneData scene_data) {
 #CODE : FRAGMENT
 
 #if defined(GFL2_SEMANTICS) && !defined(MODE_RENDER_DEPTH)
+#ifdef GFL2_SOURCE_EXT
+	gfl2_semantic_output = gfl2_source_ext_value;
+#else
 	gfl2_semantic_output = gfl2_semantic;
+#endif
 	gfl2_owner_state_output = gfl2_owner_state;
 	gfl2_source_motion_output = gfl2_source_motion;
 #ifdef GFL2_CHARACTER_MASK
