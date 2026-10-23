@@ -1221,6 +1221,7 @@ void fragment_shader(in SceneData scene_data) {
 	uvec2 gfl2_owner_state = uvec2(0u);
 	vec4 gfl2_source_motion = vec4(0.0);
 	float gfl2_contour_mask = 0.0;
+	float gfl2_character_mask_value = 0.0;
 	float gfl2_idmask_value = 0.0;
 	vec3 albedo_highp = vec3(1.0);
 	vec3 backlight = vec3(0.0);
@@ -1355,7 +1356,11 @@ void fragment_shader(in SceneData scene_data) {
 	gfl2_semantic_output = gfl2_semantic;
 	gfl2_owner_state_output = gfl2_owner_state;
 	gfl2_source_motion_output = gfl2_source_motion;
+#ifdef GFL2_CHARACTER_MASK
+	gfl2_contour_mask_output = gfl2_character_mask_value;
+#else
 	gfl2_contour_mask_output = gfl2_contour_mask;
+#endif
 #ifdef GFL2_IDMASK_OR
 	gfl2_idmask_output = gfl2_idmask_value;
 #elif defined(GFL2_IDMASK_G)

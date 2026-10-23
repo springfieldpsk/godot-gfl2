@@ -152,7 +152,7 @@ public:
 #endif
 
 		RID get_color_only_fb();
-		RID get_color_pass_fb(uint32_t p_color_pass_flags, bool p_gfl2 = false);
+		RID get_color_pass_fb(uint32_t p_color_pass_flags, bool p_gfl2 = false, bool p_character_mask = false);
 		void ensure_gfl2_attachments();
 		void clear_gfl2_attachments();
 		RID get_depth_fb(DepthFrameBufferType p_type = DEPTH_FB);
