@@ -259,6 +259,7 @@ public:
 		bool writes_gfl2_source_ext = false;
 		bool gfl2_source_ext = false;
 		bool gfl2_source_ext_gba = false;
+		bool gfl2_source_mrt = false;
 		bool gfl2_color_disabled = false;
 		bool gfl2_color_rgb_only = false;
 		bool gfl2_color_r_only = false;

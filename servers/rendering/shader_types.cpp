@@ -272,6 +272,7 @@ ShaderTypes::ShaderTypes() {
 		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("gfl2_character_mask") });
 		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("gfl2_source_ext") });
 		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("gfl2_source_ext_gba") });
+		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("gfl2_source_mrt") });
 		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("unshaded") });
 		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("wireframe") });
 		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("diffuse"), "lambert", "lambert_wrap", "burley", "toon" });

@@ -191,6 +191,7 @@ void RenderForwardClustered::RenderBufferDataForwardClustered::ensure_gfl2_attac
 		render_buffers->create_texture("gfl2", "source_ext", RD::DATA_FORMAT_R8G8B8A8_UNORM, usage, render_buffers->get_texture_samples());
 		render_buffers->create_texture("gfl2", "owner_state", RD::DATA_FORMAT_R32G32_UINT, usage, render_buffers->get_texture_samples());
 		render_buffers->create_texture("gfl2", "source_motion", RD::DATA_FORMAT_R32G32B32A32_SFLOAT, usage, render_buffers->get_texture_samples());
+		render_buffers->create_texture("gfl2", "source_motion_half", RD::DATA_FORMAT_R16G16B16A16_SFLOAT, usage, render_buffers->get_texture_samples());
 		render_buffers->create_texture("gfl2", "contour_mask", RD::DATA_FORMAT_R8_UNORM, usage | RD::TEXTURE_USAGE_CAN_COPY_FROM_BIT, render_buffers->get_texture_samples());
 		render_buffers->create_texture("gfl2", "idmask", RD::DATA_FORMAT_R8G8_UNORM, usage | RD::TEXTURE_USAGE_CAN_COPY_FROM_BIT, render_buffers->get_texture_samples());
 		render_buffers->create_texture("gfl2", "character_mask", RD::DATA_FORMAT_R8_UNORM, usage | RD::TEXTURE_USAGE_CAN_COPY_FROM_BIT, render_buffers->get_texture_samples());
@@ -200,12 +201,12 @@ void RenderForwardClustered::RenderBufferDataForwardClustered::ensure_gfl2_attac
 void RenderForwardClustered::RenderBufferDataForwardClustered::clear_gfl2_attachments() {
 	// Clear only the auxiliary attachments. Main color/depth are loaded by the
 	// normal alpha framebuffer, preserving all opaque and transparent coverage.
-	RID fb = FramebufferCacheRD::get_singleton()->get_cache(render_buffers->get_texture("gfl2", "semantic"), render_buffers->get_texture("gfl2", "owner_state"), render_buffers->get_texture("gfl2", "source_motion"), render_buffers->get_texture("gfl2", "contour_mask"), render_buffers->get_texture("gfl2", "idmask"), render_buffers->get_texture("gfl2", "character_mask"), render_buffers->get_texture("gfl2", "source_ext"));
-	RD::get_singleton()->draw_list_begin(fb, RD::DRAW_CLEAR_COLOR_ALL, Vector<Color>({ Color(0, 0, 0, 0), Color(0, 0, 0, 0), Color(0, 0, 0, 0), Color(0, 0, 0, 0), Color(0, 0, 0, 0), Color(0, 0, 0, 0), Color(0, 0, 0, 0) }));
+	RID fb = FramebufferCacheRD::get_singleton()->get_cache(render_buffers->get_texture("gfl2", "semantic"), render_buffers->get_texture("gfl2", "owner_state"), render_buffers->get_texture("gfl2", "source_motion"), render_buffers->get_texture("gfl2", "contour_mask"), render_buffers->get_texture("gfl2", "idmask"), render_buffers->get_texture("gfl2", "character_mask"), render_buffers->get_texture("gfl2", "source_ext"), render_buffers->get_texture("gfl2", "source_motion_half"));
+	RD::get_singleton()->draw_list_begin(fb, RD::DRAW_CLEAR_COLOR_ALL, Vector<Color>({ Color(0, 0, 0, 0), Color(0, 0, 0, 0), Color(0, 0, 0, 0), Color(0, 0, 0, 0), Color(0, 0, 0, 0), Color(0, 0, 0, 0), Color(0, 0, 0, 0), Color(0, 0, 0, 0) }));
 	RD::get_singleton()->draw_list_end();
 }
 
-RID RenderForwardClustered::RenderBufferDataForwardClustered::get_color_pass_fb(uint32_t p_color_pass_flags, bool p_gfl2, bool p_character_mask, bool p_source_ext) {
+RID RenderForwardClustered::RenderBufferDataForwardClustered::get_color_pass_fb(uint32_t p_color_pass_flags, bool p_gfl2, bool p_character_mask, bool p_source_ext, bool p_source_mrt) {
 	ERR_FAIL_NULL_V(render_buffers, RID());
 	bool use_msaa = render_buffers->get_msaa_3d() != RSE::VIEWPORT_MSAA_DISABLED;
 
@@ -231,11 +232,12 @@ RID RenderForwardClustered::RenderBufferDataForwardClustered::get_color_pass_fb(
 		ensure_gfl2_attachments();
 		RID mask = render_buffers->get_texture("gfl2", p_character_mask ? "character_mask" : "contour_mask");
 		RID semantic = render_buffers->get_texture("gfl2", p_source_ext ? "source_ext" : "semantic");
+		RID source_motion = render_buffers->get_texture("gfl2", p_source_mrt ? "source_motion_half" : "source_motion");
 		RID vrs_texture = render_buffers->has_texture(RB_SCOPE_VRS, RB_TEXTURE) ? render_buffers->get_texture(RB_SCOPE_VRS, RB_TEXTURE) : RID();
 		if (vrs_texture.is_valid()) {
-			return FramebufferCacheRD::get_singleton()->get_cache(color, specular, velocity_buffer, semantic, render_buffers->get_texture("gfl2", "owner_state"), render_buffers->get_texture("gfl2", "source_motion"), mask, render_buffers->get_texture("gfl2", "idmask"), depth, vrs_texture);
+			return FramebufferCacheRD::get_singleton()->get_cache(color, specular, velocity_buffer, semantic, render_buffers->get_texture("gfl2", "owner_state"), source_motion, mask, render_buffers->get_texture("gfl2", "idmask"), depth, vrs_texture);
 		}
-		return FramebufferCacheRD::get_singleton()->get_cache(color, specular, velocity_buffer, semantic, render_buffers->get_texture("gfl2", "owner_state"), render_buffers->get_texture("gfl2", "source_motion"), mask, render_buffers->get_texture("gfl2", "idmask"), depth);
+		return FramebufferCacheRD::get_singleton()->get_cache(color, specular, velocity_buffer, semantic, render_buffers->get_texture("gfl2", "owner_state"), source_motion, mask, render_buffers->get_texture("gfl2", "idmask"), depth);
 	}
 
 	if (render_buffers->has_texture(RB_SCOPE_VRS, RB_TEXTURE)) {
@@ -2576,8 +2578,9 @@ void RenderForwardClustered::_render_scene(RenderDataRD *p_render_data, const Co
 				bool writer = render_list[RENDER_LIST_ALPHA].elements[first]->shader->uses_gfl2_semantics;
 				bool character_mask = render_list[RENDER_LIST_ALPHA].elements[first]->shader->gfl2_character_mask;
 				bool source_ext = render_list[RENDER_LIST_ALPHA].elements[first]->shader->gfl2_source_ext;
+				bool source_mrt = render_list[RENDER_LIST_ALPHA].elements[first]->shader->gfl2_source_mrt;
 				uint32_t end = first + 1;
-				while (end < render_list[RENDER_LIST_ALPHA].elements.size() && render_list[RENDER_LIST_ALPHA].elements[end]->shader->uses_gfl2_semantics == writer && render_list[RENDER_LIST_ALPHA].elements[end]->shader->gfl2_character_mask == character_mask && render_list[RENDER_LIST_ALPHA].elements[end]->shader->gfl2_source_ext == source_ext) {
+				while (end < render_list[RENDER_LIST_ALPHA].elements.size() && render_list[RENDER_LIST_ALPHA].elements[end]->shader->uses_gfl2_semantics == writer && render_list[RENDER_LIST_ALPHA].elements[end]->shader->gfl2_character_mask == character_mask && render_list[RENDER_LIST_ALPHA].elements[end]->shader->gfl2_source_ext == source_ext && render_list[RENDER_LIST_ALPHA].elements[end]->shader->gfl2_source_mrt == source_mrt) {
 					end++;
 				}
 				render_list_params.elements = render_list[RENDER_LIST_ALPHA].elements.ptr() + first;
@@ -2586,7 +2589,7 @@ void RenderForwardClustered::_render_scene(RenderDataRD *p_render_data, const Co
 				render_list_params.element_offset = first;
 				render_list_params.gfl2_attachments = writer;
 				render_list_params.gfl2_motion_ready = p_render_data->scene_data->calculate_motion_vectors && !using_taa && !using_upscaling;
-				RID writer_framebuffer = (character_mask || source_ext) ? rb_data->get_color_pass_fb(transparent_color_pass_flags, true, character_mask, source_ext) : alpha_framebuffer;
+				RID writer_framebuffer = (character_mask || source_ext) ? rb_data->get_color_pass_fb(transparent_color_pass_flags, true, character_mask, source_ext, source_mrt) : alpha_framebuffer;
 				_render_list_with_draw_list(&render_list_params, writer ? writer_framebuffer : ordinary_framebuffer, RD::DRAW_DEFAULT_ALL, Vector<Color>(), 0.0f, 0u, p_render_data->render_region);
 				first = end;
 			}

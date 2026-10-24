@@ -68,7 +68,7 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 	gfl2_color_rgb_only = gfl2_color_r_only = gfl2_alpha_src_alpha = false;
 	uses_gfl2_idmask = writes_gfl2_idmask = gfl2_idmask_r = gfl2_idmask_or = gfl2_idmask_g = false;
 	uses_gfl2_character_mask = writes_gfl2_character_mask = gfl2_character_mask = false;
-	uses_gfl2_source_ext = writes_gfl2_source_ext = gfl2_source_ext = gfl2_source_ext_gba = false;
+	uses_gfl2_source_ext = writes_gfl2_source_ext = gfl2_source_ext = gfl2_source_ext_gba = gfl2_source_mrt = false;
 	uses_alpha_clip = false;
 	uses_alpha_antialiasing = false;
 	uses_blend_alpha = false;
@@ -134,6 +134,7 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 	actions.render_mode_flags["gfl2_semantics"] = &uses_gfl2_semantics;
 	actions.render_mode_flags["gfl2_source_ext"] = &gfl2_source_ext;
 	actions.render_mode_flags["gfl2_source_ext_gba"] = &gfl2_source_ext_gba;
+	actions.render_mode_flags["gfl2_source_mrt"] = &gfl2_source_mrt;
 	actions.usage_flag_pointers["GFL2_SOURCE_EXT"] = &uses_gfl2_source_ext;
 	actions.write_flag_pointers["GFL2_SOURCE_EXT"] = &writes_gfl2_source_ext;
 	actions.render_mode_flags["gfl2_motion_inputs"] = &uses_gfl2_motion_inputs;
@@ -226,8 +227,12 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 		ERR_PRINT("GFL2 color modes require gfl2_semantics, mutually exclusive RT0 masks, and blend_mix for gfl2_alpha_src_alpha.");
 		err = ERR_INVALID_DATA;
 	}
-	if (err == OK && (uses_gfl2_source_ext || gfl2_source_ext || gfl2_source_ext_gba) && (!gfl2_source_ext || !writes_gfl2_source_ext || !uses_gfl2_semantics || writes_gfl2_semantic || writes_gfl2_owner_state || writes_gfl2_motion || writes_gfl2_contour_mask || writes_gfl2_character_mask || writes_gfl2_idmask || uses_gfl2_motion_inputs)) {
+	if (err == OK && (uses_gfl2_source_ext || gfl2_source_ext || gfl2_source_ext_gba || gfl2_source_mrt) && (!gfl2_source_ext || !writes_gfl2_source_ext || !uses_gfl2_semantics || writes_gfl2_semantic || writes_gfl2_owner_state || writes_gfl2_contour_mask || writes_gfl2_character_mask || writes_gfl2_idmask || (!gfl2_source_mrt && (writes_gfl2_motion || uses_gfl2_motion_inputs)))) {
 		ERR_PRINT("GFL2 source ext requires explicit mode, assigned value and exclusive auxiliary writes.");
+		err = ERR_INVALID_DATA;
+	}
+	if (err == OK && gfl2_source_mrt && (!uses_gfl2_motion_inputs || !writes_gfl2_motion || gfl2_source_ext_gba)) {
+		ERR_PRINT("GFL2 source MRT requires motion inputs, assigned motion and full RGBA ext writes.");
 		err = ERR_INVALID_DATA;
 	}
 	if (err == OK && (uses_gfl2_character_mask || gfl2_character_mask) && (!gfl2_character_mask || !writes_gfl2_character_mask || !uses_gfl2_semantics || !gfl2_color_disabled || writes_gfl2_semantic || writes_gfl2_owner_state || writes_gfl2_motion || writes_gfl2_contour_mask || writes_gfl2_idmask || uses_gfl2_motion_inputs || gfl2_alpha_src_alpha || blend_mode != BLEND_MODE_MIX || depth_drawi != DEPTH_DRAW_DISABLED || depth_test_disabledi || depth_test_invertedi || stencil_readi || stencil_writei || stencil_write_depth_faili)) {
