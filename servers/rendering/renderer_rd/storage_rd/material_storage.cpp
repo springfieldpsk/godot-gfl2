@@ -2295,6 +2295,13 @@ void MaterialStorage::shader_set_code(RID p_shader, const String &p_code) {
 				material->data->self = material->self;
 				material->data->set_next_pass(material->next_pass);
 				material->data->set_render_priority(material->priority);
+				if (material->gfl2_render_queue >= 0 && !material->data->supports_gfl2_transparent_sort()) {
+					ERR_PRINT("GFL2 transparent sorting disabled after switching to unsupported material data.");
+					material->gfl2_render_queue = -1;
+					material->gfl2_pass_ordinal = 0;
+				}
+				material->data->gfl2_render_queue = material->gfl2_render_queue;
+				material->data->gfl2_pass_ordinal = material->gfl2_pass_ordinal;
 			}
 			material->shader_type = new_type;
 		}
@@ -2557,6 +2564,13 @@ void MaterialStorage::material_set_shader(RID p_material, RID p_shader) {
 	material->data->self = p_material;
 	material->data->set_next_pass(material->next_pass);
 	material->data->set_render_priority(material->priority);
+	if (material->gfl2_render_queue >= 0 && !material->data->supports_gfl2_transparent_sort()) {
+		ERR_PRINT("GFL2 transparent sorting disabled after switching to unsupported material data.");
+		material->gfl2_render_queue = -1;
+		material->gfl2_pass_ordinal = 0;
+	}
+	material->data->gfl2_render_queue = material->gfl2_render_queue;
+	material->data->gfl2_pass_ordinal = material->gfl2_pass_ordinal;
 	//updating happens later
 	material->dependency.changed_notify(Dependency::DEPENDENCY_CHANGED_MATERIAL);
 	_material_queue_update(material, true, true);
@@ -2624,6 +2638,29 @@ void MaterialStorage::material_set_render_priority(RID p_material, int priority)
 		material->data->set_render_priority(priority);
 	}
 	material->dependency.changed_notify(Dependency::DEPENDENCY_CHANGED_MATERIAL);
+}
+
+void MaterialStorage::material_set_gfl2_transparent_sort(RID p_material, int p_queue, int p_pass_ordinal) {
+	Material *material = material_owner.get_or_null(p_material);
+	ERR_FAIL_NULL(material);
+	ERR_FAIL_COND_MSG(p_queue < -1 || p_queue > 5000 || p_pass_ordinal < 0 || p_pass_ordinal > 15 || (p_queue == -1 && p_pass_ordinal != 0), "Invalid GFL2 transparent queue or pass ordinal.");
+	ERR_FAIL_COND_MSG(p_queue >= 0 && (!material->data || !material->data->supports_gfl2_transparent_sort()), "GFL2 transparent sorting requires Forward+ spatial material data.");
+	if (material->gfl2_render_queue == p_queue && material->gfl2_pass_ordinal == p_pass_ordinal) {
+		return;
+	}
+	material->gfl2_render_queue = p_queue;
+	material->gfl2_pass_ordinal = p_pass_ordinal;
+	if (material->data) {
+		material->data->gfl2_render_queue = p_queue;
+		material->data->gfl2_pass_ordinal = p_pass_ordinal;
+	}
+	material->dependency.changed_notify(Dependency::DEPENDENCY_CHANGED_MATERIAL);
+}
+
+Vector2i MaterialStorage::material_get_gfl2_transparent_sort(RID p_material) const {
+	const Material *material = material_owner.get_or_null(p_material);
+	ERR_FAIL_NULL_V(material, Vector2i(-1, 0));
+	return Vector2i(material->gfl2_render_queue, material->gfl2_pass_ordinal);
 }
 
 bool MaterialStorage::material_is_animated(RID p_material) {

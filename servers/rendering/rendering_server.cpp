@@ -2350,6 +2350,8 @@ void RenderingServer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("material_set_param", "material", "parameter", "value"), &RenderingServer::material_set_param);
 	ClassDB::bind_method(D_METHOD("material_get_param", "material", "parameter"), &RenderingServer::material_get_param);
 	ClassDB::bind_method(D_METHOD("material_set_render_priority", "material", "priority"), &RenderingServer::material_set_render_priority);
+	ClassDB::bind_method(D_METHOD("material_set_gfl2_transparent_sort", "material", "queue", "pass_ordinal"), &RenderingServer::material_set_gfl2_transparent_sort);
+	ClassDB::bind_method(D_METHOD("material_get_gfl2_transparent_sort", "material"), &RenderingServer::material_get_gfl2_transparent_sort);
 
 	ClassDB::bind_method(D_METHOD("material_set_next_pass", "material", "next_material"), &RenderingServer::material_set_next_pass);
 

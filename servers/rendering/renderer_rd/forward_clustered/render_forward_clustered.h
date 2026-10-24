@@ -556,6 +556,8 @@ private:
 		RSE::PrimitiveType primitive = RSE::PRIMITIVE_MAX;
 		uint32_t flags = 0;
 		uint32_t surface_index = 0;
+		int32_t gfl2_render_queue = -1;
+		uint32_t gfl2_pass_ordinal = 0;
 		bool uses_lightmap_specular = false;
 		uint32_t color_pass_inclusion_mask = 0;
 
@@ -579,6 +581,7 @@ private:
 
 	class GeometryInstanceForwardClustered : public RenderGeometryInstanceBase {
 	public:
+		uint64_t gfl2_sort_instance_id = 0;
 		// lightmap
 		RID lightmap_instance;
 		Rect2 lightmap_uv_scale;
@@ -639,6 +642,7 @@ private:
 	SelfList<GeometryInstanceSurfaceDataCache>::List geometry_surface_compilation_all_list;
 
 	PagedAllocator<GeometryInstanceForwardClustered> geometry_instance_alloc;
+	uint64_t gfl2_sort_instance_counter = 0;
 	PagedAllocator<GeometryInstanceSurfaceDataCache> geometry_instance_surface_alloc;
 	PagedAllocator<GeometryInstanceLightmapSH> geometry_instance_lightmap_sh;
 
@@ -744,7 +748,34 @@ private:
 
 		struct SortByReverseDepthAndPriority {
 			_FORCE_INLINE_ bool operator()(const GeometryInstanceSurfaceDataCache *A, const GeometryInstanceSurfaceDataCache *B) const {
-				return (A->sort.priority == B->sort.priority) ? (A->owner->depth > B->owner->depth) : (A->sort.priority < B->sort.priority);
+				if (A->sort.priority != B->sort.priority) {
+					return A->sort.priority < B->sort.priority;
+				}
+				// A single lexicographic key also orders mixed legacy/opt-in pairs.
+				// Comparing source keys only when BOTH opt in would not be transitive.
+				if (A->gfl2_render_queue != B->gfl2_render_queue) {
+					return A->gfl2_render_queue < B->gfl2_render_queue;
+				}
+				if (A->gfl2_render_queue < 0) {
+					return A->owner->depth > B->owner->depth;
+				}
+				const bool a_nan = Math::is_nan(A->owner->depth);
+				const bool b_nan = Math::is_nan(B->owner->depth);
+				if (a_nan != b_nan) {
+					return !a_nan;
+				}
+				if (!a_nan && A->owner->depth != B->owner->depth) {
+					return A->owner->depth > B->owner->depth;
+				}
+				// Stable managed ties. Source distance production and arbitrary
+				// cross-material equal-depth state keys are not transplanted here.
+				if (A->owner->gfl2_sort_instance_id != B->owner->gfl2_sort_instance_id) {
+					return A->owner->gfl2_sort_instance_id < B->owner->gfl2_sort_instance_id;
+				}
+				if (A->surface_index != B->surface_index) {
+					return A->surface_index < B->surface_index;
+				}
+				return A->gfl2_pass_ordinal < B->gfl2_pass_ordinal;
 			}
 		};
 

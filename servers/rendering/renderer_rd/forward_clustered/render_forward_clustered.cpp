@@ -4464,6 +4464,8 @@ void RenderForwardClustered::_geometry_instance_add_surface_with_material(Geomet
 	sdcache->surface = mesh_storage->mesh_get_surface(p_mesh, p_surface);
 	sdcache->primitive = mesh_storage->mesh_surface_get_primitive(sdcache->surface);
 	sdcache->surface_index = p_surface;
+	sdcache->gfl2_render_queue = p_material->gfl2_render_queue;
+	sdcache->gfl2_pass_ordinal = p_material->gfl2_pass_ordinal;
 
 	if (ginstance->data->dirty_dependencies) {
 		RSG::utilities->base_update_dependency(p_mesh, &ginstance->data->dependency_tracker);
@@ -5126,6 +5128,7 @@ RenderGeometryInstance *RenderForwardClustered::geometry_instance_create(RID p_b
 	ERR_FAIL_COND_V(!((1 << type) & RSE::INSTANCE_GEOMETRY_MASK), nullptr);
 
 	GeometryInstanceForwardClustered *ginstance = geometry_instance_alloc.alloc();
+	ginstance->gfl2_sort_instance_id = ++gfl2_sort_instance_counter;
 	ginstance->data = memnew(GeometryInstanceForwardClustered::Data);
 
 	ginstance->data->base = p_base;

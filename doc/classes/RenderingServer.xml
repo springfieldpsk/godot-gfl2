@@ -2388,6 +2388,13 @@
 				[b]Note:[/b] The equivalent resource is [Material].
 			</description>
 		</method>
+		<method name="material_get_gfl2_transparent_sort" qualifiers="const">
+			<return type="Vector2i" />
+			<param index="0" name="material" type="RID" />
+			<description>
+				Returns the explicit GFL2 alpha queue and pass ordinal. The default is [code]Vector2i(-1, 0)[/code]. This extension requires Forward+ spatial material data.
+			</description>
+		</method>
 		<method name="material_get_param" qualifiers="const">
 			<return type="Variant" />
 			<param index="0" name="material" type="RID" />
@@ -2411,6 +2418,17 @@
 			<param index="2" name="value" type="Variant" />
 			<description>
 				Sets a material's parameter.
+			</description>
+		</method>
+		<method name="material_set_gfl2_transparent_sort">
+			<return type="void" />
+			<param index="0" name="material" type="RID" />
+			<param index="1" name="queue" type="int" />
+			<param index="2" name="pass_ordinal" type="int" />
+			<description>
+				Enables explicit Forward+ alpha sorting for a spatial material with a queue in [code]0..5000[/code] and an ordinal in [code]0..15[/code]. Pass [code]-1, 0[/code] to disable. Invalid values preserve the previous setting. Unsupported material data rejects enabled settings.
+				Render priority remains the outer stage boundary. Within a priority, legacy materials (queue -1) precede enabled queues, then enabled materials sort by queue, descending Godot depth, instance creation order, surface index, and pass ordinal. Ordinary-to-ordinary ordering is unchanged. The stable tie policy and Godot depth are managed integration choices, not a full source-engine sorting transplant.
+				Settings survive spatial shader data recreation. Switching to unsupported material data disables them with an error. This is RenderingServer RID state and is not a serialized Material resource property. Opaque and shadow sorts are unaffected.
 			</description>
 		</method>
 		<method name="material_set_render_priority">

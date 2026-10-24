@@ -363,6 +363,7 @@ public:
 		RID next_pass;
 		uint8_t priority;
 		virtual void set_render_priority(int p_priority);
+		virtual bool supports_gfl2_transparent_sort() const override { return true; }
 		virtual void set_next_pass(RID p_pass);
 		virtual bool update_parameters(const HashMap<StringName, Variant> &p_parameters, bool p_uniform_dirty, bool p_textures_dirty);
 		virtual ~MaterialData();

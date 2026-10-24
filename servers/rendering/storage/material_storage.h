@@ -81,6 +81,10 @@ public:
 	virtual void material_free(RID p_rid) = 0;
 
 	virtual void material_set_render_priority(RID p_material, int priority) = 0;
+	virtual void material_set_gfl2_transparent_sort(RID p_material, int p_queue, int p_pass_ordinal) {
+		ERR_FAIL_COND_MSG(p_queue != -1 || p_pass_ordinal != 0, "GFL2 transparent sorting requires Forward+ spatial material data.");
+	}
+	virtual Vector2i material_get_gfl2_transparent_sort(RID p_material) const { return Vector2i(-1, 0); }
 	virtual void material_set_shader(RID p_shader_material, RID p_shader) = 0;
 
 	virtual void material_set_param(RID p_material, const StringName &p_param, const Variant &p_value) = 0;

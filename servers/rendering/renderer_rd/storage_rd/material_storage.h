@@ -98,6 +98,9 @@ public:
 		RID get_default_texture_id(ShaderLanguage::DataType p_type, ShaderLanguage::ShaderNode::Uniform::Hint p_hint);
 
 		virtual void set_render_priority(int p_priority) = 0;
+		int32_t gfl2_render_queue = -1;
+		int32_t gfl2_pass_ordinal = 0;
+		virtual bool supports_gfl2_transparent_sort() const { return false; }
 		virtual void set_next_pass(RID p_pass) = 0;
 		virtual bool update_parameters(const HashMap<StringName, Variant> &p_parameters, bool p_uniform_dirty, bool p_textures_dirty) = 0;
 		virtual ~MaterialData();
@@ -300,6 +303,8 @@ private:
 		bool texture_dirty = false;
 		HashMap<StringName, Variant> params;
 		int32_t priority = 0;
+		int32_t gfl2_render_queue = -1;
+		int32_t gfl2_pass_ordinal = 0;
 		RID next_pass;
 		SelfList<Material> update_element;
 
@@ -501,6 +506,8 @@ public:
 
 	virtual void material_set_next_pass(RID p_material, RID p_next_material) override;
 	virtual void material_set_render_priority(RID p_material, int priority) override;
+	virtual void material_set_gfl2_transparent_sort(RID p_material, int p_queue, int p_pass_ordinal) override;
+	virtual Vector2i material_get_gfl2_transparent_sort(RID p_material) const override;
 
 	virtual bool material_is_animated(RID p_material) override;
 	virtual bool material_casts_shadows(RID p_material) override;
