@@ -70,6 +70,7 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 	uses_gfl2_idmask = writes_gfl2_idmask = gfl2_idmask_r = gfl2_idmask_or = gfl2_idmask_g = false;
 	uses_gfl2_character_mask = writes_gfl2_character_mask = gfl2_character_mask = false;
 	uses_gfl2_source_ext = writes_gfl2_source_ext = gfl2_source_ext = gfl2_source_ext_gba = gfl2_source_mrt = false;
+	gfl2_opaque_pass = false;
 	uses_alpha_clip = false;
 	uses_alpha_antialiasing = false;
 	uses_blend_alpha = false;
@@ -134,6 +135,7 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 
 	actions.render_mode_flags["gfl2_semantics"] = &uses_gfl2_semantics;
 	actions.render_mode_flags["gfl2_source_ext"] = &gfl2_source_ext;
+	actions.render_mode_flags["gfl2_opaque_pass"] = &gfl2_opaque_pass;
 	actions.render_mode_flags["gfl2_source_ext_gba"] = &gfl2_source_ext_gba;
 	actions.render_mode_flags["gfl2_source_mrt"] = &gfl2_source_mrt;
 	actions.usage_flag_pointers["GFL2_SOURCE_EXT"] = &uses_gfl2_source_ext;
@@ -221,7 +223,11 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 		ERR_PRINT("gfl2_blend_disabled requires explicit ALPHA with blend_mix, no alpha prepass/scissor/hash/coverage and no GFL2 auxiliary semantics.");
 		err = ERR_INVALID_DATA;
 	}
-	if (err == OK && (((uses_gfl2_outputs || gfl2_color_disabled) && !uses_gfl2_semantics) || (uses_gfl2_semantics && (!uses_alpha || uses_alpha_clip || uses_alpha_antialiasing || uses_depth_prepass_alpha)))) {
+	if (err == OK && gfl2_opaque_pass && (uses_alpha_clip || uses_alpha_antialiasing || uses_depth_prepass_alpha || gen_code.uses_screen_texture || gen_code.uses_depth_texture || gen_code.uses_normal_roughness_texture || uses_sss || uses_transmittance || writes_gfl2_semantic || writes_gfl2_owner_state || writes_gfl2_contour_mask || writes_gfl2_character_mask || writes_gfl2_idmask)) {
+		ERR_PRINT("gfl2_opaque_pass requires no alpha prepass/coverage, screen reads or SSS; auxiliary output must use source Ext.");
+		err = ERR_INVALID_DATA;
+	}
+	if (err == OK && (((uses_gfl2_outputs || gfl2_color_disabled) && !uses_gfl2_semantics) || (uses_gfl2_semantics && ((!uses_alpha && !gfl2_opaque_pass) || uses_alpha_clip || uses_alpha_antialiasing || uses_depth_prepass_alpha)))) {
 		ERR_PRINT("gfl2_semantics requires an explicit ALPHA transparent shader without alpha prepass, scissor/hash or alpha-to-coverage.");
 		err = ERR_INVALID_DATA;
 	}
@@ -523,7 +529,7 @@ void SceneShaderForwardClustered::ShaderData::_create_pipeline(PipelineKey p_pip
 
 			blend_state = blend_state_color_blend;
 
-			if (depth_draw == DEPTH_DRAW_OPAQUE) {
+			if (depth_draw == DEPTH_DRAW_OPAQUE && !gfl2_opaque_pass) {
 				depth_stencil_state.enable_depth_write = false; //alpha does not draw depth
 			}
 		} else {

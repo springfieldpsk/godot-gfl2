@@ -206,7 +206,20 @@ void RenderForwardClustered::RenderBufferDataForwardClustered::clear_gfl2_attach
 	RD::get_singleton()->draw_list_end();
 }
 
-RID RenderForwardClustered::RenderBufferDataForwardClustered::get_color_pass_fb(uint32_t p_color_pass_flags, bool p_gfl2, bool p_character_mask, bool p_source_ext, bool p_source_mrt) {
+void RenderForwardClustered::RenderBufferDataForwardClustered::ensure_gfl2_opaque_ext() {
+	if (!render_buffers->has_texture("gfl2", "opaque_source_ext")) {
+		const uint32_t usage = RD::TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | RD::TEXTURE_USAGE_SAMPLING_BIT | RD::TEXTURE_USAGE_CAN_COPY_FROM_BIT;
+		render_buffers->create_texture("gfl2", "opaque_source_ext", RD::DATA_FORMAT_R8G8B8A8_UNORM, usage, render_buffers->get_texture_samples());
+	}
+}
+
+void RenderForwardClustered::RenderBufferDataForwardClustered::clear_gfl2_opaque_ext() {
+	RID fb = FramebufferCacheRD::get_singleton()->get_cache(render_buffers->get_texture("gfl2", "opaque_source_ext"));
+	RD::get_singleton()->draw_list_begin(fb, RD::DRAW_CLEAR_COLOR_ALL, Vector<Color>({ Color(0, 0, 0, 0) }));
+	RD::get_singleton()->draw_list_end();
+}
+
+RID RenderForwardClustered::RenderBufferDataForwardClustered::get_color_pass_fb(uint32_t p_color_pass_flags, bool p_gfl2, bool p_character_mask, bool p_source_ext, bool p_source_mrt, bool p_opaque_source_ext) {
 	ERR_FAIL_NULL_V(render_buffers, RID());
 	bool use_msaa = render_buffers->get_msaa_3d() != RSE::VIEWPORT_MSAA_DISABLED;
 
@@ -231,7 +244,7 @@ RID RenderForwardClustered::RenderBufferDataForwardClustered::get_color_pass_fb(
 		ERR_FAIL_COND_V(v_count != 1, RID());
 		ensure_gfl2_attachments();
 		RID mask = render_buffers->get_texture("gfl2", p_character_mask ? "character_mask" : "contour_mask");
-		RID semantic = render_buffers->get_texture("gfl2", p_source_ext ? "source_ext" : "semantic");
+		RID semantic = render_buffers->get_texture("gfl2", p_opaque_source_ext ? "opaque_source_ext" : p_source_ext ? "source_ext" : "semantic");
 		RID source_motion = render_buffers->get_texture("gfl2", p_source_mrt ? "source_motion_half" : "source_motion");
 		RID vrs_texture = render_buffers->has_texture(RB_SCOPE_VRS, RB_TEXTURE) ? render_buffers->get_texture(RB_SCOPE_VRS, RB_TEXTURE) : RID();
 		if (vrs_texture.is_valid()) {
@@ -503,6 +516,10 @@ void RenderForwardClustered::_render_list_template(RenderingDevice::DrawListID p
 				}
 
 				pipeline_key.gfl2_attachments = p_params->gfl2_attachments;
+				if (shader->gfl2_opaque_pass && (surf->gfl2_render_queue < 0 || surf->gfl2_render_queue > 5000)) {
+					ERR_PRINT_ONCE("gfl2_opaque_pass requires explicit source render queue 0..5000.");
+					continue;
+				}
 				if (shader->writes_gfl2_character_mask && RD::get_singleton()->framebuffer_format_get_texture_samples(p_params->framebuffer_format, 0) != RD::TEXTURE_SAMPLES_1) {
 					ERR_PRINT_ONCE("GFL2 CharacterID requires a single-sample scene target.");
 					continue;
@@ -512,7 +529,7 @@ void RenderForwardClustered::_render_list_template(RenderingDevice::DrawListID p
 					continue;
 				}
 				if (shader->uses_gfl2_semantics && !p_params->gfl2_attachments) {
-					ERR_PRINT_ONCE("gfl2_semantics is supported only in single-view Forward+ scene alpha passes.");
+					ERR_PRINT_ONCE("gfl2_semantics requires its supported single-view Forward+ scene attachment pass.");
 					continue;
 				}
 				pipeline_key.version = SceneShaderForwardClustered::PIPELINE_VERSION_COLOR_PASS;
@@ -1014,6 +1031,7 @@ void RenderForwardClustered::_fill_render_list(RenderListType p_render_list, con
 			// Opaque fills motion and alpha lists.
 			render_list[RENDER_LIST_MOTION].clear();
 			render_list[RENDER_LIST_ALPHA].clear();
+			render_list[RENDER_LIST_GFL2_OPAQUE].clear();
 		}
 	}
 
@@ -1213,11 +1231,19 @@ void RenderForwardClustered::_fill_render_list(RenderListType p_render_list, con
 					force_alpha = true;
 				}
 
-				if (!force_alpha && (surf->flags & (GeometryInstanceSurfaceDataCache::FLAG_PASS_DEPTH | GeometryInstanceSurfaceDataCache::FLAG_PASS_OPAQUE))) {
+				if (surf->shader->gfl2_opaque_pass) {
+					surf->color_pass_inclusion_mask = COLOR_PASS_FLAG_TRANSPARENT;
+					render_list[RENDER_LIST_GFL2_OPAQUE].add_element(surf);
+					if (uses_gi) {
+						surf->sort.uses_forward_gi = 1;
+					}
+				} else if (!force_alpha && (surf->flags & (GeometryInstanceSurfaceDataCache::FLAG_PASS_DEPTH | GeometryInstanceSurfaceDataCache::FLAG_PASS_OPAQUE))) {
 					rl->add_element(surf);
 				}
 
-				if (force_alpha || (surf->flags & GeometryInstanceSurfaceDataCache::FLAG_PASS_ALPHA)) {
+				if (surf->shader->gfl2_opaque_pass) {
+					// Routed above. It must not also enter alpha/motion lists.
+				} else if (force_alpha || (surf->flags & GeometryInstanceSurfaceDataCache::FLAG_PASS_ALPHA)) {
 					surf->color_pass_inclusion_mask = COLOR_PASS_FLAG_TRANSPARENT;
 					render_list[RENDER_LIST_ALPHA].add_element(surf);
 					if (uses_gi) {
@@ -2048,11 +2074,13 @@ void RenderForwardClustered::_render_scene(RenderDataRD *p_render_data, const Co
 	render_list[RENDER_LIST_OPAQUE].sort_by_key();
 	render_list[RENDER_LIST_MOTION].sort_by_key();
 	render_list[RENDER_LIST_ALPHA].sort_by_reverse_depth_and_priority();
+	render_list[RENDER_LIST_GFL2_OPAQUE].sort_by_gfl2_opaque_queue();
 
 	int *render_info = p_render_data->render_info ? p_render_data->render_info->info[RSE::VIEWPORT_RENDER_INFO_TYPE_VISIBLE] : (int *)nullptr;
 	_fill_instance_data(RENDER_LIST_OPAQUE, render_info);
 	_fill_instance_data(RENDER_LIST_MOTION, render_info);
 	_fill_instance_data(RENDER_LIST_ALPHA, render_info);
+	_fill_instance_data(RENDER_LIST_GFL2_OPAQUE, render_info);
 
 	RD::get_singleton()->draw_command_end_label();
 
@@ -2383,6 +2411,47 @@ void RenderForwardClustered::_render_scene(RenderDataRD *p_render_data, const Co
 
 			RD::get_singleton()->draw_command_end_label();
 		}
+	}
+
+	// Source queue materials intentionally bypass Godot's ordinary depth prepass:
+	// later color-only surfaces may preserve Ext written by an earlier surface.
+	// The current-frame target is independent from the legacy alpha attachment.
+	if (rb_data.is_valid() && !is_multiview) {
+		const bool has_source_opaque = !render_list[RENDER_LIST_GFL2_OPAQUE].elements.is_empty();
+		if (has_source_opaque || rb->has_texture("gfl2", "opaque_source_ext")) {
+			rb_data->ensure_gfl2_opaque_ext();
+			rb_data->clear_gfl2_opaque_ext();
+		}
+		if (has_source_opaque && !using_taa && !using_upscaling) {
+			RD::get_singleton()->draw_command_begin_label("Render GFL2 Source Opaque Pass");
+			uint32_t source_flags = (color_pass_flags | uint32_t(COLOR_PASS_FLAG_TRANSPARENT)) & ~(uint32_t(COLOR_PASS_FLAG_SEPARATE_SPECULAR) | uint32_t(COLOR_PASS_FLAG_MOTION_VECTORS));
+			uint32_t source_environment = _setup_environment(p_render_data, is_reflection_probe, screen_size, screen_size, p_default_bg_color, false);
+			RID source_uniform_set = _setup_render_pass_uniform_set(RENDER_LIST_GFL2_OPAQUE, p_render_data, false, radiance_texture, samplers, source_environment, true);
+			RenderListParameters source_params(render_list[RENDER_LIST_GFL2_OPAQUE].elements.ptr(), render_list[RENDER_LIST_GFL2_OPAQUE].element_info.ptr(), render_list[RENDER_LIST_GFL2_OPAQUE].elements.size(), reverse_cull, PASS_MODE_COLOR, source_flags, false, p_render_data->directional_light_soft_shadows, source_uniform_set, get_debug_draw_mode() == RSE::VIEWPORT_DEBUG_DRAW_WIREFRAME, Vector2(), p_render_data->scene_data->lod_distance_multiplier, p_render_data->scene_data->screen_mesh_lod_threshold, p_render_data->scene_data->view_count, 0, base_specialization, !is_reflection_probe);
+			uint32_t first = 0;
+			while (first < render_list[RENDER_LIST_GFL2_OPAQUE].elements.size()) {
+				bool writer = render_list[RENDER_LIST_GFL2_OPAQUE].elements[first]->shader->uses_gfl2_semantics;
+				bool source_mrt = render_list[RENDER_LIST_GFL2_OPAQUE].elements[first]->shader->gfl2_source_mrt;
+				uint32_t end = first + 1;
+				while (end < render_list[RENDER_LIST_GFL2_OPAQUE].elements.size() && render_list[RENDER_LIST_GFL2_OPAQUE].elements[end]->shader->uses_gfl2_semantics == writer && render_list[RENDER_LIST_GFL2_OPAQUE].elements[end]->shader->gfl2_source_mrt == source_mrt) {
+					end++;
+				}
+				source_params.elements = render_list[RENDER_LIST_GFL2_OPAQUE].elements.ptr() + first;
+				source_params.element_info = render_list[RENDER_LIST_GFL2_OPAQUE].element_info.ptr() + first;
+				source_params.element_count = end - first;
+				source_params.element_offset = first;
+				source_params.gfl2_attachments = writer;
+				source_params.gfl2_motion_ready = p_render_data->scene_data->calculate_motion_vectors;
+				RID framebuffer = rb_data->get_color_pass_fb(source_flags, writer, false, writer, source_mrt, writer);
+				_render_list_with_draw_list(&source_params, framebuffer, RD::DRAW_DEFAULT_ALL, Vector<Color>(), 0.0f, 0u, p_render_data->render_region);
+				first = end;
+			}
+			RD::get_singleton()->draw_command_end_label();
+		} else if (has_source_opaque) {
+			ERR_PRINT_ONCE("gfl2_opaque_pass does not support TAA or temporal upscaling.");
+		}
+	} else if (!render_list[RENDER_LIST_GFL2_OPAQUE].elements.is_empty()) {
+		ERR_PRINT_ONCE("gfl2_opaque_pass requires a single-view scene viewport.");
 	}
 
 	{

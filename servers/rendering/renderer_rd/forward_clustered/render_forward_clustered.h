@@ -80,6 +80,7 @@ class RenderForwardClustered : public RendererSceneRenderRD {
 		RENDER_LIST_MOTION, //used for opaque objects with motion
 		RENDER_LIST_ALPHA, //used for transparent objects
 		RENDER_LIST_SECONDARY, //used for shadows and other objects
+		RENDER_LIST_GFL2_OPAQUE, //explicit source opaque queue, outside depth prepass
 		RENDER_LIST_MAX
 	};
 
@@ -152,7 +153,9 @@ public:
 #endif
 
 		RID get_color_only_fb();
-		RID get_color_pass_fb(uint32_t p_color_pass_flags, bool p_gfl2 = false, bool p_character_mask = false, bool p_source_ext = false, bool p_source_mrt = false);
+		RID get_color_pass_fb(uint32_t p_color_pass_flags, bool p_gfl2 = false, bool p_character_mask = false, bool p_source_ext = false, bool p_source_mrt = false, bool p_opaque_source_ext = false);
+		void ensure_gfl2_opaque_ext();
+		void clear_gfl2_opaque_ext();
 		void ensure_gfl2_attachments();
 		void clear_gfl2_attachments();
 		RID get_depth_fb(DepthFrameBufferType p_type = DEPTH_FB);
@@ -424,7 +427,7 @@ private:
 		uint32_t max_lightmaps;
 		RID lightmap_buffer;
 
-		MultiUmaBuffer<1u> instance_buffer[RENDER_LIST_MAX] = { MultiUmaBuffer<1u>("RENDER_LIST_OPAQUE"), MultiUmaBuffer<1u>("RENDER_LIST_MOTION"), MultiUmaBuffer<1u>("RENDER_LIST_ALPHA"), MultiUmaBuffer<1u>("RENDER_LIST_SECONDARY") };
+		MultiUmaBuffer<1u> instance_buffer[RENDER_LIST_MAX] = { MultiUmaBuffer<1u>("RENDER_LIST_OPAQUE"), MultiUmaBuffer<1u>("RENDER_LIST_MOTION"), MultiUmaBuffer<1u>("RENDER_LIST_ALPHA"), MultiUmaBuffer<1u>("RENDER_LIST_SECONDARY"), MultiUmaBuffer<1u>("RENDER_LIST_GFL2_OPAQUE") };
 		InstanceData *curr_gpu_ptr[RENDER_LIST_MAX] = {};
 
 		LightmapCaptureData *lightmap_captures = nullptr;
@@ -782,6 +785,38 @@ private:
 		void sort_by_reverse_depth_and_priority() { //used for alpha
 
 			SortArray<GeometryInstanceSurfaceDataCache *, SortByReverseDepthAndPriority> sorter;
+			sorter.sort(elements.ptr(), elements.size());
+		}
+
+		struct SortByGfl2OpaqueQueue {
+			_FORCE_INLINE_ bool operator()(const GeometryInstanceSurfaceDataCache *A, const GeometryInstanceSurfaceDataCache *B) const {
+				// Explicit source feature order precedes per-feature queue sorting.
+				if (A->sort.priority != B->sort.priority) {
+					return A->sort.priority < B->sort.priority;
+				}
+				if (A->gfl2_render_queue != B->gfl2_render_queue) {
+					return A->gfl2_render_queue < B->gfl2_render_queue;
+				}
+				const bool a_nan = Math::is_nan(A->owner->depth);
+				const bool b_nan = Math::is_nan(B->owner->depth);
+				if (a_nan != b_nan) {
+					return !a_nan;
+				}
+				if (!a_nan && A->owner->depth != B->owner->depth) {
+					return A->owner->depth < B->owner->depth;
+				}
+				if (A->owner->gfl2_sort_instance_id != B->owner->gfl2_sort_instance_id) {
+					return A->owner->gfl2_sort_instance_id < B->owner->gfl2_sort_instance_id;
+				}
+				if (A->surface_index != B->surface_index) {
+					return A->surface_index < B->surface_index;
+				}
+				return A->gfl2_pass_ordinal < B->gfl2_pass_ordinal;
+			}
+		};
+
+		void sort_by_gfl2_opaque_queue() {
+			SortArray<GeometryInstanceSurfaceDataCache *, SortByGfl2OpaqueQueue> sorter;
 			sorter.sort(elements.ptr(), elements.size());
 		}
 
