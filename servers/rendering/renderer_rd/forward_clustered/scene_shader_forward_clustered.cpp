@@ -66,6 +66,7 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 	writes_gfl2_semantic = writes_gfl2_owner_state = writes_gfl2_motion = writes_gfl2_contour_mask = false;
 	gfl2_color_disabled = false;
 	gfl2_color_rgb_only = gfl2_color_r_only = gfl2_alpha_src_alpha = false;
+	gfl2_blend_disabled = false;
 	uses_gfl2_idmask = writes_gfl2_idmask = gfl2_idmask_r = gfl2_idmask_or = gfl2_idmask_g = false;
 	uses_gfl2_character_mask = writes_gfl2_character_mask = gfl2_character_mask = false;
 	uses_gfl2_source_ext = writes_gfl2_source_ext = gfl2_source_ext = gfl2_source_ext_gba = gfl2_source_mrt = false;
@@ -144,6 +145,7 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 	actions.render_mode_flags["gfl2_color_rgb_only"] = &gfl2_color_rgb_only;
 	actions.render_mode_flags["gfl2_color_r_only"] = &gfl2_color_r_only;
 	actions.render_mode_flags["gfl2_alpha_src_alpha"] = &gfl2_alpha_src_alpha;
+	actions.render_mode_flags["gfl2_blend_disabled"] = &gfl2_blend_disabled;
 	actions.render_mode_flags["gfl2_idmask_r"] = &gfl2_idmask_r;
 	actions.render_mode_flags["gfl2_idmask_or"] = &gfl2_idmask_or;
 	actions.render_mode_flags["gfl2_idmask_g"] = &gfl2_idmask_g;
@@ -215,6 +217,10 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 		err = SceneShaderForwardClustered::singleton->compiler.compile(RSE::SHADER_SPATIAL, code, &actions, path, gen_code);
 	}
 
+	if (err == OK && gfl2_blend_disabled && (!uses_alpha || uses_alpha_clip || uses_alpha_antialiasing || uses_depth_prepass_alpha || alpha_antialiasing_mode != ALPHA_ANTIALIASING_OFF || uses_gfl2_semantics || blend_mode != BLEND_MODE_MIX)) {
+		ERR_PRINT("gfl2_blend_disabled requires explicit ALPHA with blend_mix, no alpha prepass/scissor/hash/coverage and no GFL2 auxiliary semantics.");
+		err = ERR_INVALID_DATA;
+	}
 	if (err == OK && (((uses_gfl2_outputs || gfl2_color_disabled) && !uses_gfl2_semantics) || (uses_gfl2_semantics && (!uses_alpha || uses_alpha_clip || uses_alpha_antialiasing || uses_depth_prepass_alpha)))) {
 		ERR_PRINT("gfl2_semantics requires an explicit ALPHA transparent shader without alpha prepass, scissor/hash or alpha-to-coverage.");
 		err = ERR_INVALID_DATA;
@@ -416,6 +422,9 @@ void SceneShaderForwardClustered::ShaderData::_create_pipeline(PipelineKey p_pip
 
 	// Color pass -> attachment 0: Color/Diffuse, attachment 1: Separate Specular, attachment 2: Motion Vectors
 	RD::PipelineColorBlendState::Attachment blend_attachment = blend_mode_to_blend_attachment(BlendMode(blend_mode));
+	if (gfl2_blend_disabled) {
+		blend_attachment.enable_blend = false;
+	}
 	RD::PipelineColorBlendState blend_state_color_blend;
 	blend_state_color_blend.attachments = { blend_attachment, RD::PipelineColorBlendState::Attachment(), RD::PipelineColorBlendState::Attachment() };
 	RD::PipelineColorBlendState blend_state_color_opaque = RD::PipelineColorBlendState::create_disabled(3);
