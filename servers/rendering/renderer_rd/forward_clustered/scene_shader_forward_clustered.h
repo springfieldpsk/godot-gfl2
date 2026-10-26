@@ -266,6 +266,11 @@ public:
 		bool gfl2_color_r_only = false;
 		bool gfl2_alpha_src_alpha = false;
 		bool gfl2_blend_disabled = false;
+		bool gfl2_stencil_increment = false;
+		bool gfl2_stencil_decrement = false;
+		bool gfl2_stencil_write_mask_248 = false;
+		bool gfl2_stencil_no_color = false;
+		bool gfl2_stencil_rgb_only = false;
 		bool uses_gfl2_idmask = false;
 		bool writes_gfl2_idmask = false;
 		bool gfl2_idmask_r = false;

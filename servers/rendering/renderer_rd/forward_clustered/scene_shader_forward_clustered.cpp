@@ -67,6 +67,8 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 	gfl2_color_disabled = false;
 	gfl2_color_rgb_only = gfl2_color_r_only = gfl2_alpha_src_alpha = false;
 	gfl2_blend_disabled = false;
+	gfl2_stencil_increment = gfl2_stencil_decrement = gfl2_stencil_write_mask_248 = false;
+	gfl2_stencil_no_color = gfl2_stencil_rgb_only = false;
 	uses_gfl2_idmask = writes_gfl2_idmask = gfl2_idmask_r = gfl2_idmask_or = gfl2_idmask_g = false;
 	uses_gfl2_character_mask = writes_gfl2_character_mask = gfl2_character_mask = false;
 	uses_gfl2_source_ext = writes_gfl2_source_ext = gfl2_source_ext = gfl2_source_ext_gba = gfl2_source_mrt = false;
@@ -144,6 +146,11 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 	actions.usage_flag_pointers["GFL2_CURRENT_CLIP"] = &uses_gfl2_clip_values;
 	actions.usage_flag_pointers["GFL2_PREVIOUS_CLIP"] = &uses_gfl2_clip_values;
 	actions.render_mode_flags["gfl2_color_disabled"] = &gfl2_color_disabled;
+	actions.render_mode_flags["gfl2_stencil_increment"] = &gfl2_stencil_increment;
+	actions.render_mode_flags["gfl2_stencil_decrement"] = &gfl2_stencil_decrement;
+	actions.render_mode_flags["gfl2_stencil_write_mask_248"] = &gfl2_stencil_write_mask_248;
+	actions.render_mode_flags["gfl2_stencil_no_color"] = &gfl2_stencil_no_color;
+	actions.render_mode_flags["gfl2_stencil_rgb_only"] = &gfl2_stencil_rgb_only;
 	actions.render_mode_flags["gfl2_color_rgb_only"] = &gfl2_color_rgb_only;
 	actions.render_mode_flags["gfl2_color_r_only"] = &gfl2_color_r_only;
 	actions.render_mode_flags["gfl2_alpha_src_alpha"] = &gfl2_alpha_src_alpha;
@@ -219,6 +226,15 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 		err = SceneShaderForwardClustered::singleton->compiler.compile(RSE::SHADER_SPATIAL, code, &actions, path, gen_code);
 	}
 
+	const bool gfl2_head_stencil = gfl2_stencil_increment || gfl2_stencil_decrement || gfl2_stencil_write_mask_248 || gfl2_stencil_no_color || gfl2_stencil_rgb_only;
+	if (err == OK && gfl2_head_stencil && (stencil_referencei < 0 || !stencil_writei || uses_gfl2_semantics || uses_alpha_clip || uses_alpha_antialiasing || uses_depth_prepass_alpha || (gfl2_stencil_increment && gfl2_stencil_decrement) || (gfl2_stencil_no_color && gfl2_stencil_rgb_only))) {
+		ERR_PRINT("GFL2 head stencil requires an explicit stencil write/reference, no auxiliary semantics or alpha prepass/coverage, and exclusive pass operations/color masks.");
+		err = ERR_INVALID_DATA;
+	}
+	if (err == OK && gfl2_stencil_no_color && depth_drawi != DEPTH_DRAW_DISABLED) {
+		ERR_PRINT("gfl2_stencil_no_color requires depth_draw_never; it must not create an invisible depth occluder.");
+		err = ERR_INVALID_DATA;
+	}
 	if (err == OK && gfl2_blend_disabled && (!uses_alpha || uses_alpha_clip || uses_alpha_antialiasing || uses_depth_prepass_alpha || alpha_antialiasing_mode != ALPHA_ANTIALIASING_OFF || uses_gfl2_semantics || blend_mode != BLEND_MODE_MIX)) {
 		ERR_PRINT("gfl2_blend_disabled requires explicit ALPHA with blend_mix, no alpha prepass/scissor/hash/coverage and no GFL2 auxiliary semantics.");
 		err = ERR_INVALID_DATA;
@@ -478,13 +494,13 @@ void SceneShaderForwardClustered::ShaderData::_create_pipeline(PipelineKey p_pip
 		}
 
 		if (stencil_flags & STENCIL_FLAG_WRITE) {
-			op.pass = RD::STENCIL_OP_REPLACE;
-			op.write_mask = stencil_mask;
+			op.pass = gfl2_stencil_increment ? RD::STENCIL_OP_INCREMENT_AND_CLAMP : (gfl2_stencil_decrement ? RD::STENCIL_OP_DECREMENT_AND_CLAMP : RD::STENCIL_OP_REPLACE);
+			op.write_mask = gfl2_stencil_write_mask_248 ? 248 : stencil_mask;
 		}
 
 		if (stencil_flags & STENCIL_FLAG_WRITE_DEPTH_FAIL) {
 			op.depth_fail = RD::STENCIL_OP_REPLACE;
-			op.write_mask = stencil_mask;
+			op.write_mask = gfl2_stencil_write_mask_248 ? 248 : stencil_mask;
 		}
 
 		depth_stencil_state.front_op = op;
@@ -604,6 +620,17 @@ void SceneShaderForwardClustered::ShaderData::_create_pipeline(PipelineKey p_pip
 			blend_state.enable_logic_op = gfl2_idmask_or;
 			blend_state.logic_op = RD::LOGIC_OP_OR;
 		}
+	}
+
+	// Head state passes use the existing scene depth/stencil. Color suppression
+	// is independent of GFL2's optional MRT attachments and affects color passes only.
+	if (use_stencil && gfl2_stencil_no_color) {
+		for (int i = 0; i < blend_state.attachments.size(); i++) {
+			RD::PipelineColorBlendState::Attachment &attachment = blend_state.attachments.write[i];
+			attachment.write_r = attachment.write_g = attachment.write_b = attachment.write_a = false;
+		}
+	} else if (use_stencil && gfl2_stencil_rgb_only && !blend_state.attachments.is_empty()) {
+		blend_state.attachments.write[0].write_a = false;
 	}
 
 	// Convert the specialization from the key to pipeline specialization constants.
