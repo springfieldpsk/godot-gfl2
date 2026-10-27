@@ -797,6 +797,13 @@ private:
 				if (A->gfl2_render_queue != B->gfl2_render_queue) {
 					return A->gfl2_render_queue < B->gfl2_render_queue;
 				}
+				// Managed pass ordinals pin the sequence inside one queue
+				// (stencil producer -> consumer -> late layer). GeometryInstance
+				// depth or creation order must not reorder an explicitly
+				// staged pass chain that shares a queue.
+				if (A->gfl2_pass_ordinal != B->gfl2_pass_ordinal) {
+					return A->gfl2_pass_ordinal < B->gfl2_pass_ordinal;
+				}
 				const bool a_nan = Math::is_nan(A->owner->depth);
 				const bool b_nan = Math::is_nan(B->owner->depth);
 				if (a_nan != b_nan) {
