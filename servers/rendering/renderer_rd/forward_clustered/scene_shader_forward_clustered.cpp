@@ -69,6 +69,7 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 	gfl2_blend_disabled = false;
 	gfl2_stencil_increment = gfl2_stencil_decrement = gfl2_stencil_write_mask_248 = false;
 	gfl2_stencil_no_color = gfl2_stencil_rgb_only = false;
+	gfl2_alpha_preserved = gfl2_blend_one_one = false;
 	uses_gfl2_idmask = writes_gfl2_idmask = gfl2_idmask_r = gfl2_idmask_or = gfl2_idmask_g = false;
 	uses_gfl2_character_mask = writes_gfl2_character_mask = gfl2_character_mask = false;
 	uses_gfl2_source_ext = writes_gfl2_source_ext = gfl2_source_ext = gfl2_source_ext_gba = gfl2_source_mrt = false;
@@ -151,6 +152,8 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 	actions.render_mode_flags["gfl2_stencil_write_mask_248"] = &gfl2_stencil_write_mask_248;
 	actions.render_mode_flags["gfl2_stencil_no_color"] = &gfl2_stencil_no_color;
 	actions.render_mode_flags["gfl2_stencil_rgb_only"] = &gfl2_stencil_rgb_only;
+	actions.render_mode_flags["gfl2_alpha_preserved"] = &gfl2_alpha_preserved;
+	actions.render_mode_flags["gfl2_blend_one_one"] = &gfl2_blend_one_one;
 	actions.render_mode_flags["gfl2_color_rgb_only"] = &gfl2_color_rgb_only;
 	actions.render_mode_flags["gfl2_color_r_only"] = &gfl2_color_r_only;
 	actions.render_mode_flags["gfl2_alpha_src_alpha"] = &gfl2_alpha_src_alpha;
@@ -233,6 +236,14 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 	}
 	if (err == OK && gfl2_stencil_no_color && depth_drawi != DEPTH_DRAW_DISABLED) {
 		ERR_PRINT("gfl2_stencil_no_color requires depth_draw_never; it must not create an invisible depth occluder.");
+		err = ERR_INVALID_DATA;
+	}
+	if (err == OK && gfl2_blend_one_one && (uses_gfl2_semantics || gfl2_blend_disabled)) {
+		ERR_PRINT("gfl2_blend_one_one requires ordinary color pipelines without gfl2_semantics or disabled blending.");
+		err = ERR_INVALID_DATA;
+	}
+	if (err == OK && gfl2_alpha_preserved && gfl2_stencil_no_color) {
+		ERR_PRINT("gfl2_alpha_preserved is redundant with gfl2_stencil_no_color.");
 		err = ERR_INVALID_DATA;
 	}
 	if (err == OK && gfl2_blend_disabled && (!uses_alpha || uses_alpha_clip || uses_alpha_antialiasing || uses_depth_prepass_alpha || alpha_antialiasing_mode != ALPHA_ANTIALIASING_OFF || uses_gfl2_semantics || blend_mode != BLEND_MODE_MIX)) {
@@ -622,6 +633,22 @@ void SceneShaderForwardClustered::ShaderData::_create_pipeline(PipelineKey p_pip
 		}
 	}
 
+	// Source ColorMask RGB states (serialized colMask 14 under Unity's
+	// reversed channel order) keep the main target alpha; applies to plain
+	// and GFL2 color pipelines alike.
+	if (p_pipeline_key.version == PIPELINE_VERSION_COLOR_PASS && gfl2_alpha_preserved && !blend_state.attachments.is_empty()) {
+		blend_state.attachments.write[0].write_a = false;
+	}
+	if (p_pipeline_key.version == PIPELINE_VERSION_COLOR_PASS && gfl2_blend_one_one && !blend_state.attachments.is_empty()) {
+		RD::PipelineColorBlendState::Attachment &one_one = blend_state.attachments.write[0];
+		one_one.enable_blend = true;
+		one_one.color_blend_op = RD::BLEND_OP_ADD;
+		one_one.src_color_blend_factor = RD::BLEND_FACTOR_ONE;
+		one_one.dst_color_blend_factor = RD::BLEND_FACTOR_ONE;
+		one_one.alpha_blend_op = RD::BLEND_OP_ADD;
+		one_one.src_alpha_blend_factor = RD::BLEND_FACTOR_ONE;
+		one_one.dst_alpha_blend_factor = RD::BLEND_FACTOR_ONE;
+	}
 	// Head state passes use the existing scene depth/stencil. Color suppression
 	// is independent of GFL2's optional MRT attachments and affects color passes only.
 	if (use_stencil && gfl2_stencil_no_color) {

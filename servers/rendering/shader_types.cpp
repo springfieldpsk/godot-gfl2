@@ -267,6 +267,8 @@ ShaderTypes::ShaderTypes() {
 		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("gfl2_color_r_only") });
 		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("gfl2_alpha_src_alpha") });
 		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("gfl2_blend_disabled") });
+		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("gfl2_alpha_preserved") });
+		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("gfl2_blend_one_one") });
 		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("gfl2_stencil_increment") });
 		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("gfl2_stencil_decrement") });
 		shader_modes[RSE::SHADER_SPATIAL].modes.push_back({ PNAME("gfl2_stencil_write_mask_248") });
