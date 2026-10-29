@@ -144,6 +144,16 @@ bool Light3D::get_gfl2_square_shadow_cascades() const {
 	return gfl2_square_shadow_cascades;
 }
 
+void Light3D::set_gfl2_shadow_tile_scissor(bool p_enable) {
+	ERR_FAIL_COND_MSG(p_enable && (type != RSE::LIGHT_DIRECTIONAL || OS::get_singleton()->get_current_rendering_method() != "forward_plus"), "GFL2 shadow tile scissor requires a Forward+ directional light.");
+	gfl2_shadow_tile_scissor = p_enable;
+	RS::get_singleton()->light_set_gfl2_shadow_tile_scissor(light, p_enable);
+}
+
+bool Light3D::get_gfl2_shadow_tile_scissor() const {
+	return gfl2_shadow_tile_scissor;
+}
+
 void Light3D::set_color(const Color &p_color) {
 	color = p_color;
 
@@ -365,7 +375,7 @@ bool Light3D::is_editor_only() const {
 }
 
 void Light3D::_validate_property(PropertyInfo &p_property) const {
-	if (get_light_type() != RSE::LIGHT_DIRECTIONAL && (p_property.name == "light_angular_distance" || p_property.name == "light_intensity_lux" || p_property.name == "gfl2_square_shadow_cascades")) {
+	if (get_light_type() != RSE::LIGHT_DIRECTIONAL && (p_property.name == "light_angular_distance" || p_property.name == "light_intensity_lux" || p_property.name == "gfl2_square_shadow_cascades" || p_property.name == "gfl2_shadow_tile_scissor")) {
 		// Angular distance and Light Intensity Lux are only used in DirectionalLight3D.
 		p_property.usage = PROPERTY_USAGE_NONE;
 	} else if (get_light_type() == RSE::LIGHT_DIRECTIONAL && p_property.name == "light_intensity_lumens") {
@@ -413,7 +423,9 @@ void Light3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_gfl2_character_main", "enabled"), &Light3D::set_gfl2_character_main);
 	ClassDB::bind_method(D_METHOD("get_gfl2_character_main"), &Light3D::get_gfl2_character_main);
 	ClassDB::bind_method(D_METHOD("set_gfl2_square_shadow_cascades", "enabled"), &Light3D::set_gfl2_square_shadow_cascades);
+	ClassDB::bind_method(D_METHOD("set_gfl2_shadow_tile_scissor", "enabled"), &Light3D::set_gfl2_shadow_tile_scissor);
 	ClassDB::bind_method(D_METHOD("get_gfl2_square_shadow_cascades"), &Light3D::get_gfl2_square_shadow_cascades);
+	ClassDB::bind_method(D_METHOD("get_gfl2_shadow_tile_scissor"), &Light3D::get_gfl2_shadow_tile_scissor);
 
 	ClassDB::bind_method(D_METHOD("set_shadow_reverse_cull_face", "enable"), &Light3D::set_shadow_reverse_cull_face);
 	ClassDB::bind_method(D_METHOD("get_shadow_reverse_cull_face"), &Light3D::get_shadow_reverse_cull_face);
@@ -458,6 +470,7 @@ void Light3D::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "shadow_reverse_cull_face"), "set_shadow_reverse_cull_face", "get_shadow_reverse_cull_face");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "gfl2_character_main"), "set_gfl2_character_main", "get_gfl2_character_main");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "gfl2_square_shadow_cascades"), "set_gfl2_square_shadow_cascades", "get_gfl2_square_shadow_cascades");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "gfl2_shadow_tile_scissor"), "set_gfl2_shadow_tile_scissor", "get_gfl2_shadow_tile_scissor");
 	ADD_PROPERTYI(PropertyInfo(Variant::FLOAT, "shadow_transmittance_bias", PROPERTY_HINT_RANGE, "-16,16,0.001"), "set_param", "get_param", PARAM_TRANSMITTANCE_BIAS);
 	ADD_PROPERTYI(PropertyInfo(Variant::FLOAT, "shadow_opacity", PROPERTY_HINT_RANGE, "0,1,0.01"), "set_param", "get_param", PARAM_SHADOW_OPACITY);
 	ADD_PROPERTYI(PropertyInfo(Variant::FLOAT, "shadow_blur", PROPERTY_HINT_RANGE, "0,10,0.001"), "set_param", "get_param", PARAM_SHADOW_BLUR);

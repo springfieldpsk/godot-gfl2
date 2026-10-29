@@ -243,6 +243,24 @@ bool LightStorage::light_get_gfl2_square_shadow_cascades(RID p_light) const {
 	return light->gfl2_square_shadow_cascades;
 }
 
+void LightStorage::light_set_gfl2_shadow_tile_scissor(RID p_light, bool p_enable) {
+	Light *light = light_owner.get_or_null(p_light);
+	ERR_FAIL_NULL(light);
+	ERR_FAIL_COND(p_enable && light->type != RSE::LIGHT_DIRECTIONAL);
+	if (light->gfl2_shadow_tile_scissor == p_enable) {
+		return;
+	}
+	light->gfl2_shadow_tile_scissor = p_enable;
+	light->version++;
+	light->dependency.changed_notify(Dependency::DEPENDENCY_CHANGED_LIGHT);
+}
+
+bool LightStorage::light_get_gfl2_shadow_tile_scissor(RID p_light) const {
+	const Light *light = light_owner.get_or_null(p_light);
+	ERR_FAIL_NULL_V(light, false);
+	return light->gfl2_shadow_tile_scissor;
+}
+
 void LightStorage::light_set_param(RID p_light, RSE::LightParam p_param, float p_value) {
 	Light *light = light_owner.get_or_null(p_light);
 	ERR_FAIL_NULL(light);
