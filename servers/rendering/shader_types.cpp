@@ -240,6 +240,13 @@ ShaderTypes::ShaderTypes() {
 	shader_modes[RSE::SHADER_SPATIAL].functions["light"].built_ins["LIGHT_SHADOW"] = constt(ShaderLanguage::TYPE_FLOAT);
 	shader_modes[RSE::SHADER_SPATIAL].functions["light"].built_ins["LIGHT_IS_MAIN"] = constt(ShaderLanguage::TYPE_FLOAT);
 	shader_modes[RSE::SHADER_SPATIAL].functions["light"].built_ins["LIGHT_OWNER"] = constt(ShaderLanguage::TYPE_INT);
+	// Forward+ raw directional shadow inputs; explicitly referenced by project shaders.
+	shader_modes[RSE::SHADER_SPATIAL].functions["light"].built_ins["GFL2_MAIN_SHADOW_ATLAS"] = constt(ShaderLanguage::TYPE_SAMPLER2D);
+	for (int i = 1; i <= 4; i++) {
+		shader_modes[RSE::SHADER_SPATIAL].functions["light"].built_ins["GFL2_MAIN_SHADOW_MATRIX" + itos(i)] = constt(ShaderLanguage::TYPE_MAT4);
+	}
+	shader_modes[RSE::SHADER_SPATIAL].functions["light"].built_ins["GFL2_MAIN_SHADOW_SPLITS"] = constt(ShaderLanguage::TYPE_VEC4);
+	shader_modes[RSE::SHADER_SPATIAL].functions["light"].built_ins["GFL2_MAIN_SHADOW_PARAMS"] = constt(ShaderLanguage::TYPE_VEC4);
 	shader_modes[RSE::SHADER_SPATIAL].functions["light"].built_ins["ALBEDO"] = constt(ShaderLanguage::TYPE_VEC3);
 	shader_modes[RSE::SHADER_SPATIAL].functions["light"].built_ins["BACKLIGHT"] = constt(ShaderLanguage::TYPE_VEC3);
 	shader_modes[RSE::SHADER_SPATIAL].functions["light"].built_ins["METALLIC"] = constt(ShaderLanguage::TYPE_FLOAT);

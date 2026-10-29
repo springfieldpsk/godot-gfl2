@@ -171,6 +171,27 @@ void light_compute(hvec3 N, hvec3 L, hvec3 V, half A, hvec3 light_color, bool is
 	// and lightmap-probe lights pass 0).
 	float light_is_main_highp = (gfl2_owner_main & 0x80000000u) != 0u ? 1.0 : 0.0;
 	int light_owner_highp = int(gfl2_owner_main & 0x7FFFFFFFu);
+#ifdef GFL2_MAIN_SHADOW_INPUTS
+	// Matrices map view positions to atlas UV/reverse-Z. Params are atlas texel
+	// size, opacity, fade-from and fade-to (the latter two in view-space Z).
+	// Safe identity/disabled inputs for non-main lights and disabled shadows.
+	mat4 gfl2_main_shadow_matrix1 = mat4(1.0);
+	mat4 gfl2_main_shadow_matrix2 = mat4(1.0);
+	mat4 gfl2_main_shadow_matrix3 = mat4(1.0);
+	mat4 gfl2_main_shadow_matrix4 = mat4(1.0);
+	vec4 gfl2_main_shadow_splits = vec4(0.0);
+	vec4 gfl2_main_shadow_params = vec4(scene_data_block.data.directional_shadow_pixel_size.x, 0.0, -1.0, -2.0);
+#ifndef SHADOWS_DISABLED
+	if (light_kind_highp == 0 && light_is_main_highp > 0.5 && directional_lights.data[light_id_highp].shadow_opacity > 0.001) {
+		gfl2_main_shadow_matrix1 = directional_lights.data[light_id_highp].shadow_matrix1;
+		gfl2_main_shadow_matrix2 = directional_lights.data[light_id_highp].shadow_matrix2;
+		gfl2_main_shadow_matrix3 = directional_lights.data[light_id_highp].shadow_matrix3;
+		gfl2_main_shadow_matrix4 = directional_lights.data[light_id_highp].shadow_matrix4;
+		gfl2_main_shadow_splits = directional_lights.data[light_id_highp].shadow_split_offsets;
+		gfl2_main_shadow_params.yzw = vec3(directional_lights.data[light_id_highp].shadow_opacity, directional_lights.data[light_id_highp].fade_from, directional_lights.data[light_id_highp].fade_to);
+	}
+#endif
+#endif
 	vec3 diffuse_light_highp = vec3(diffuse_light);
 	vec3 specular_light_highp = vec3(specular_light);
 	bool is_area = false;

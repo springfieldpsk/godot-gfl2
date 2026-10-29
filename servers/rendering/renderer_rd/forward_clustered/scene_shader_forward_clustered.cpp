@@ -1015,6 +1015,18 @@ void SceneShaderForwardClustered::init(const String p_defines) {
 		actions.renames["LIGHT_SHADOW"] = "light_shadow_highp";
 		actions.renames["LIGHT_IS_MAIN"] = "light_is_main_highp";
 		actions.renames["LIGHT_OWNER"] = "light_owner_highp";
+		actions.renames["GFL2_MAIN_SHADOW_ATLAS"] = "directional_shadow_atlas";
+		actions.custom_samplers["GFL2_MAIN_SHADOW_ATLAS"] = "SAMPLER_NEAREST_CLAMP";
+		actions.usage_defines["GFL2_MAIN_SHADOW_ATLAS"] = "#define GFL2_MAIN_SHADOW_INPUTS\n";
+		for (int i = 1; i <= 4; i++) {
+			String name = "GFL2_MAIN_SHADOW_MATRIX" + itos(i);
+			actions.renames[name] = "gfl2_main_shadow_matrix" + itos(i);
+			actions.usage_defines[name] = "@GFL2_MAIN_SHADOW_ATLAS";
+		}
+		actions.renames["GFL2_MAIN_SHADOW_SPLITS"] = "gfl2_main_shadow_splits";
+		actions.renames["GFL2_MAIN_SHADOW_PARAMS"] = "gfl2_main_shadow_params";
+		actions.usage_defines["GFL2_MAIN_SHADOW_SPLITS"] = "@GFL2_MAIN_SHADOW_ATLAS";
+		actions.usage_defines["GFL2_MAIN_SHADOW_PARAMS"] = "@GFL2_MAIN_SHADOW_ATLAS";
 		actions.renames["DIFFUSE_LIGHT"] = "diffuse_light_highp";
 		actions.renames["SPECULAR_LIGHT"] = "specular_light_highp";
 
