@@ -4500,9 +4500,11 @@ void RenderForwardClustered::_geometry_instance_add_surface_with_material(Geomet
 
 	if (p_material->shader_data->stencil_enabled) {
 		if (p_material->shader_data->stencil_flags & SceneShaderForwardClustered::ShaderData::STENCIL_FLAG_READ) {
-			// Stencil materials which read from the stencil buffer must be in the alpha pass.
-			// This is critical to preserve compatibility once we'll have the compositor.
-			if (!(flags & GeometryInstanceSurfaceDataCache::FLAG_PASS_ALPHA)) {
+			// Ordinary stencil readers require the alpha pass. Source masked Ext
+			// draws use the separately ordered GFL2 opaque list, after ordinary
+			// opaque geometry and without an independent depth prepass.
+			const bool gfl2_masked_source_ext = p_material->shader_data->gfl2_opaque_pass && p_material->shader_data->gfl2_source_ext && p_material->shader_data->gfl2_stencil_write_mask_248;
+			if (!(flags & GeometryInstanceSurfaceDataCache::FLAG_PASS_ALPHA) && !gfl2_masked_source_ext) {
 				String shader_path = p_material->shader_data->path.is_empty() ? "" : "(" + p_material->shader_data->path + ")";
 				ERR_PRINT_ED(vformat("Attempting to use a shader %s that reads stencil but is not in the alpha queue. Ensure the material uses alpha blending or has depth_draw disabled or depth_test disabled.", shader_path));
 			}

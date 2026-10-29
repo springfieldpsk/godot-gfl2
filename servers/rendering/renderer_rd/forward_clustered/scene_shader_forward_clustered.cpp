@@ -230,8 +230,12 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 	}
 
 	const bool gfl2_head_stencil = gfl2_stencil_increment || gfl2_stencil_decrement || gfl2_stencil_write_mask_248 || gfl2_stencil_no_color || gfl2_stencil_rgb_only;
-	if (err == OK && gfl2_head_stencil && (stencil_referencei < 0 || !stencil_writei || uses_gfl2_semantics || uses_alpha_clip || uses_alpha_antialiasing || uses_depth_prepass_alpha || (gfl2_stencil_increment && gfl2_stencil_decrement) || (gfl2_stencil_no_color && gfl2_stencil_rgb_only))) {
-		ERR_PRINT("GFL2 head stencil requires an explicit stencil write/reference, no auxiliary semantics or alpha prepass/coverage, and exclusive pass operations/color masks.");
+	// A source fringe outline writes color, Ext/motion and masked stencil in
+	// the same draw. Its Replace mask is orthogonal to the source attachments;
+	// keep increment/decrement and color-suppressing stencil passes exclusive.
+	const bool gfl2_masked_source_ext = gfl2_stencil_write_mask_248 && gfl2_opaque_pass && gfl2_source_ext && writes_gfl2_source_ext && !stencil_write_depth_faili && !gfl2_stencil_increment && !gfl2_stencil_decrement && !gfl2_stencil_no_color && !gfl2_stencil_rgb_only;
+	if (err == OK && gfl2_head_stencil && (stencil_referencei < 0 || !stencil_writei || (uses_gfl2_semantics && !gfl2_masked_source_ext) || uses_alpha_clip || uses_alpha_antialiasing || uses_depth_prepass_alpha || (gfl2_stencil_increment && gfl2_stencil_decrement) || (gfl2_stencil_no_color && gfl2_stencil_rgb_only))) {
+		ERR_PRINT("GFL2 head stencil requires an explicit stencil write/reference, no alpha prepass/coverage, and exclusive pass operations/color masks. Auxiliary semantics only allow opaque source Ext with the 248 write mask.");
 		err = ERR_INVALID_DATA;
 	}
 	if (err == OK && gfl2_stencil_no_color && depth_drawi != DEPTH_DRAW_DISABLED) {
