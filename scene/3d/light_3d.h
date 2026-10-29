@@ -73,6 +73,7 @@ private:
 	real_t param[PARAM_MAX] = {};
 	bool shadow = false;
 	bool gfl2_character_main = false; // GFL2 P1: designated character main light
+	bool gfl2_square_shadow_cascades = false; // GFL2 P2: two square tiles in Forward+
 	bool negative = false;
 	bool reverse_cull = false;
 	uint32_t cull_mask = 0;
@@ -115,6 +116,8 @@ public:
 	bool has_shadow() const;
 	void set_gfl2_character_main(bool p_enable);
 	bool get_gfl2_character_main() const; // GFL2 P1
+	void set_gfl2_square_shadow_cascades(bool p_enable);
+	bool get_gfl2_square_shadow_cascades() const;
 
 	void set_negative(bool p_enable);
 	bool is_negative() const;

@@ -65,6 +65,7 @@ private:
 		RID projector;
 		bool shadow = false;
 		bool gfl2_main = false; // GFL2 P1: designated character main light
+		bool gfl2_square_shadow_cascades = false;
 		bool negative = false;
 		bool reverse_cull = false;
 		RSE::LightBakeMode bake_mode = RSE::LIGHT_BAKE_DYNAMIC;
@@ -507,6 +508,8 @@ public:
 
 	virtual void light_set_color(RID p_light, const Color &p_color) override;
 	virtual void light_set_gfl2_main(RID p_light, bool p_main) override; // GFL2 P1
+	virtual void light_set_gfl2_square_shadow_cascades(RID p_light, bool p_enable) override;
+	bool light_get_gfl2_square_shadow_cascades(RID p_light) const;
 	virtual void light_set_param(RID p_light, RSE::LightParam p_param, float p_value) override;
 	virtual void light_set_shadow(RID p_light, bool p_enabled) override;
 	virtual void light_set_projector(RID p_light, RID p_texture) override;

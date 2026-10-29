@@ -2908,11 +2908,18 @@ void RenderForwardClustered::_render_shadow_pass(RID p_light, RID p_shadow_atlas
 				atlas_rect.position += atlas_rect.size;
 			}
 		} else if (light_storage->light_directional_get_shadow_mode(base) == RSE::LIGHT_DIRECTIONAL_SHADOW_PARALLEL_2_SPLITS) {
-			atlas_rect.size.height /= 2;
-
-			if (p_pass == 0) {
+			if (light_storage->light_get_gfl2_square_shadow_cascades(base)) {
+				// GFL2 P2: source two-cascade maps use two square tiles side by
+				// side. Embed that logical rectangle in the existing square atlas.
+				// Keep each light's allocation disjoint when several lights exist.
+				const int side = MIN(atlas_rect.size.width, atlas_rect.size.height) / 2;
+				atlas_rect.size = Size2i(side, side);
+				atlas_rect.position.x += p_pass * side;
 			} else {
-				atlas_rect.position.y += atlas_rect.size.height;
+				atlas_rect.size.height /= 2;
+				if (p_pass != 0) {
+					atlas_rect.position.y += atlas_rect.size.height;
+				}
 			}
 		}
 

@@ -225,6 +225,24 @@ void LightStorage::light_set_gfl2_main(RID p_light, bool p_main) {
 	light->gfl2_main = p_main;
 }
 
+void LightStorage::light_set_gfl2_square_shadow_cascades(RID p_light, bool p_enable) {
+	Light *light = light_owner.get_or_null(p_light);
+	ERR_FAIL_NULL(light);
+	ERR_FAIL_COND(p_enable && light->type != RSE::LIGHT_DIRECTIONAL);
+	if (light->gfl2_square_shadow_cascades == p_enable) {
+		return;
+	}
+	light->gfl2_square_shadow_cascades = p_enable;
+	light->version++;
+	light->dependency.changed_notify(Dependency::DEPENDENCY_CHANGED_LIGHT);
+}
+
+bool LightStorage::light_get_gfl2_square_shadow_cascades(RID p_light) const {
+	const Light *light = light_owner.get_or_null(p_light);
+	ERR_FAIL_NULL_V(light, false);
+	return light->gfl2_square_shadow_cascades;
+}
+
 void LightStorage::light_set_param(RID p_light, RSE::LightParam p_param, float p_value) {
 	Light *light = light_owner.get_or_null(p_light);
 	ERR_FAIL_NULL(light);
@@ -2866,6 +2884,11 @@ int LightStorage::get_directional_light_shadow_size(RID p_light_instance) {
 		case RSE::LIGHT_DIRECTIONAL_SHADOW_ORTHOGONAL:
 			break; //none
 		case RSE::LIGHT_DIRECTIONAL_SHADOW_PARALLEL_2_SPLITS:
+			if (light_get_gfl2_square_shadow_cascades(light_instance->light)) {
+				// Match the actual square viewport used by Forward+. Culling's
+				// stabilization and world texel size must use the tile side.
+				return MIN(r.size.width, r.size.height) / 2;
+			}
 			r.size.height /= 2;
 			break;
 		case RSE::LIGHT_DIRECTIONAL_SHADOW_PARALLEL_4_SPLITS:
